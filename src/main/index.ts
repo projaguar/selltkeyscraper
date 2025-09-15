@@ -1,0 +1,215 @@
+import { app, shell, BrowserWindow, ipcMain } from 'electron';
+import { join } from 'path';
+import { electronApp, optimizer, is } from '@electron-toolkit/utils';
+import icon from '../../resources/icon.png?asset';
+import axios from 'axios';
+import { browserService, collectionService } from './services';
+
+function createWindow(): void {
+  // Create the browser window.
+  const mainWindow = new BrowserWindow({
+    width: 900,
+    height: 670,
+    show: false,
+    autoHideMenuBar: true,
+    ...(process.platform === 'linux' ? { icon } : {}),
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+    },
+  });
+
+  mainWindow.on('ready-to-show', () => {
+    mainWindow.show();
+  });
+
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url);
+    return { action: 'deny' };
+  });
+
+  // HMR for renderer base on electron-vite cli.
+  // Load the remote URL for development or the local html file for production.
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+  } else {
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+  }
+}
+
+// This method will be called when Electron has finished
+// initialization and is ready to create browser windows.
+// Some APIs can only be used after this event occurs.
+app.whenReady().then(() => {
+  // Set app user model id for windows
+  electronApp.setAppUserModelId('com.electron');
+
+  // Default open or close DevTools by F12 in development
+  // and ignore CommandOrControl + R in production.
+  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+  app.on('browser-window-created', (_, window) => {
+    optimizer.watchWindowShortcuts(window);
+  });
+
+  // IPC test
+  ipcMain.on('ping', () => console.log('pong'));
+
+  // 로그인 API
+  ipcMain.handle('login', async (_, userId: string, password: string) => {
+    try {
+      const response = await axios.request({
+        url: 'https://selltkey.com/scb/api/getLoginInfo.asp',
+        method: 'POST',
+        data: {
+          userid: userId,
+          userpwd: password,
+          version: '1.0.0',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Main process API 호출 오류:', error);
+      throw error;
+    }
+  });
+
+  // 저장된 로그인 정보 가져오기
+  ipcMain.handle('get-saved-credentials', async () => {
+    try {
+      const userDataPath = app.getPath('userData');
+      const { readFileSync, existsSync } = await import('fs');
+      const { join } = await import('path');
+      const credentialsPath = join(userDataPath, 'credentials.json');
+
+      if (existsSync(credentialsPath)) {
+        const data = readFileSync(credentialsPath, 'utf8');
+        return JSON.parse(data);
+      }
+      return null;
+    } catch (error) {
+      console.error('저장된 인증 정보 읽기 오류:', error);
+      return null;
+    }
+  });
+
+  // 로그인 정보 저장
+  ipcMain.handle('save-credentials', async (_, credentials) => {
+    try {
+      const userDataPath = app.getPath('userData');
+      const { writeFileSync } = await import('fs');
+      const { join } = await import('path');
+      const credentialsPath = join(userDataPath, 'credentials.json');
+
+      writeFileSync(credentialsPath, JSON.stringify(credentials, null, 2));
+      return true;
+    } catch (error) {
+      console.error('인증 정보 저장 오류:', error);
+      return false;
+    }
+  });
+
+  // 로그인 정보 삭제
+  ipcMain.handle('clear-credentials', async () => {
+    try {
+      const userDataPath = app.getPath('userData');
+      const { unlinkSync, existsSync } = await import('fs');
+      const { join } = await import('path');
+      const credentialsPath = join(userDataPath, 'credentials.json');
+
+      if (existsSync(credentialsPath)) {
+        unlinkSync(credentialsPath);
+      }
+      return true;
+    } catch (error) {
+      console.error('인증 정보 삭제 오류:', error);
+      return false;
+    }
+  });
+
+  // 수집 시작
+  ipcMain.handle('start-collection', async (_, usernum: string) => {
+    try {
+      console.log('수집 시작 요청 받음:', usernum);
+      const result = await collectionService.startCollection(usernum);
+      return result;
+    } catch (error) {
+      console.error('수집 시작 오류:', error);
+      return { success: false, message: '수집 시작에 실패했습니다.' };
+    }
+  });
+
+  // 수집 중지
+  ipcMain.handle('stop-collection', async () => {
+    try {
+      console.log('수집 중지 요청 받음');
+      const result = await collectionService.stopCollection();
+      return result;
+    } catch (error) {
+      console.error('수집 중지 오류:', error);
+      return { success: false, message: '수집 중지에 실패했습니다.' };
+    }
+  });
+
+  // 수집 진행상황 조회
+  ipcMain.handle('get-collection-progress', async () => {
+    try {
+      return collectionService.getProgress();
+    } catch (error) {
+      console.error('수집 진행상황 조회 오류:', error);
+      return {
+        isRunning: false,
+        usernum: null,
+        current: 0,
+        total: 0,
+        currentStore: '',
+        status: '오류 발생',
+        waitTime: undefined,
+        progress: '오류 발생',
+      };
+    }
+  });
+
+  // 네이버 로그인 상태 확인
+  ipcMain.handle('check-naver-login-status', async () => {
+    try {
+      console.log('네이버 로그인 상태 확인 요청');
+      const isLoggedIn = await browserService.checkNaverLoginStatus();
+      return isLoggedIn;
+    } catch (error) {
+      console.error('네이버 로그인 상태 확인 오류:', error);
+      return false;
+    }
+  });
+
+  // 네이버 로그인 페이지 열기
+  ipcMain.handle('open-naver-login-page', async () => {
+    try {
+      console.log('네이버 로그인 페이지 열기 요청');
+      await browserService.openNaverLoginPage();
+      return { success: true, message: '네이버 로그인 페이지가 열렸습니다.' };
+    } catch (error) {
+      console.error('네이버 로그인 페이지 열기 오류:', error);
+      return { success: false, message: '네이버 로그인 페이지를 열 수 없습니다.' };
+    }
+  });
+
+  createWindow();
+
+  app.on('activate', function () {
+    // On macOS it's common to re-create a window in the app when the
+    // dock icon is clicked and there are no other windows open.
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+// Quit when all windows are closed, except on macOS. There, it's common
+// for applications and their menu bar to stay active until the user quits
+// explicitly with Cmd + Q.
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+// In this file you can include the rest of your app's specific main process
+// code. You can also put them in separate files and require them here.
