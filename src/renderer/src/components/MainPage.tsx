@@ -12,12 +12,24 @@ const MainPage: React.FC = () => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [isNaverLoggedIn, setIsNaverLoggedIn] = useState(false);
   const [isCheckingNaverLogin, setIsCheckingNaverLogin] = useState(true);
-  const [progress, setProgress] = useState({
+  const [progress, setProgress] = useState<{
+    isRunning: boolean;
+    usernum: string | null;
+    current: number;
+    total: number;
+    currentStore: string;
+    status: string;
+    waitTime?: number;
+    progress: string;
+  }>({
+    isRunning: false,
+    usernum: null,
     current: 0,
     total: 0,
     currentStore: '',
     status: '대기 중',
-    waitTime: undefined as number | undefined,
+    waitTime: undefined,
+    progress: '대기 중',
   });
 
   // 네이버 로그인 상태 체크
@@ -117,11 +129,14 @@ const MainPage: React.FC = () => {
           setIsCollecting(false);
           // 진행상황 초기화
           setProgress({
+            isRunning: false,
+            usernum: null,
             current: 0,
             total: 0,
             currentStore: '',
             status: '대기 중',
             waitTime: undefined,
+            progress: '대기 중',
           });
           console.log('수집 중지 성공:', result.message);
         } else {
@@ -134,11 +149,14 @@ const MainPage: React.FC = () => {
         // 먼저 UI 상태를 즉시 업데이트
         setIsCollecting(true);
         setProgress({
+          isRunning: true,
+          usernum: userInfo.usernum,
           current: 0,
           total: 0,
           currentStore: '',
           status: '수집 시작 중...',
           waitTime: undefined,
+          progress: '수집 시작 중...',
         });
 
         const result = await window.api.startCollection(userInfo.usernum);
@@ -150,11 +168,14 @@ const MainPage: React.FC = () => {
           // 실패 시 상태 되돌리기
           setIsCollecting(false);
           setProgress({
+            isRunning: false,
+            usernum: null,
             current: 0,
             total: 0,
             currentStore: '',
             status: '대기 중',
             waitTime: undefined,
+            progress: '대기 중',
           });
           alert(`수집 시작 실패: ${result.message}`);
         }
@@ -168,32 +189,76 @@ const MainPage: React.FC = () => {
   // 네이버 로그인 대기 화면
   if (isCheckingNaverLogin || !isNaverLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md text-center space-y-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* 배경 장식 요소들 */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200/30 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200/30 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-100/20 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="w-full max-w-md text-center space-y-8 relative z-10">
           {/* 로딩 스피너 */}
           <div className="flex justify-center">
-            <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+            <div className="relative">
+              <div className="inline-block animate-spin rounded-full h-20 w-20 border-4 border-blue-200 border-t-blue-600"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* 메시지 */}
-          <div className="space-y-4">
-            <h1 className="text-3xl font-bold text-gray-900">Selltkey Scraper</h1>
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-lg">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          <div className="space-y-6">
+            <div className="flex items-center justify-center gap-3">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                Selltkey Scraper
+              </h1>
+            </div>
+
+            <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-3">
                 {isCheckingNaverLogin ? '네이버 로그인 상태를 확인하고 있습니다...' : '네이버 로그인이 필요합니다'}
               </h2>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 mb-6">
                 {isCheckingNaverLogin ? '잠시만 기다려주세요.' : 'Puppeteer 브라우저에서 네이버에 로그인해주세요.'}
               </p>
 
               {!isCheckingNaverLogin && (
-                <div className="space-y-3">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-blue-800 text-sm">
-                      💡 브라우저가 자동으로 열렸습니다. 네이버에 로그인하면 자동으로 메인 화면으로 이동합니다.
-                    </p>
+                <div className="space-y-4">
+                  <div className="bg-blue-50/80 border border-blue-200/50 rounded-xl p-4 backdrop-blur-sm">
+                    <div className="flex items-center gap-2 text-blue-800 text-sm">
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      브라우저가 자동으로 열렸습니다. 네이버에 로그인하면 자동으로 메인 화면으로 이동합니다.
+                    </div>
                   </div>
-                  <Button onClick={logout} variant="outline" className="text-red-600 hover:text-red-700">
+                  <Button
+                    onClick={logout}
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 rounded-xl px-6 py-2 transition-all duration-200"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
+                    </svg>
                     로그아웃
                   </Button>
                 </div>
@@ -206,47 +271,75 @@ const MainPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 p-6 relative overflow-hidden">
+      {/* 배경 장식 요소들 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 right-20 w-64 h-64 bg-blue-200/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-20 w-80 h-80 bg-indigo-200/20 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-100/10 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="max-w-6xl mx-auto relative z-10">
         {/* 헤더 */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Selltkey Scraper</h1>
-          <Button variant="outline" onClick={logout} className="text-red-600 hover:text-red-700">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Selltkey Scraper</h1>
+            <p className="text-sm text-gray-600">스마트한 상품 수집 도구</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={logout}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 rounded-xl px-6 py-2 transition-all duration-200"
+          >
             로그아웃
           </Button>
         </div>
 
         {/* 탭 영역 */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="collection">상품수집</TabsTrigger>
-            <TabsTrigger value="sourcing">벤치마킹 소싱</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 bg-gray-100/50 rounded-lg p-1">
+            <TabsTrigger
+              value="collection"
+              className="rounded-md data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm transition-all duration-200 text-gray-600"
+            >
+              상품수집
+            </TabsTrigger>
+            <TabsTrigger
+              value="sourcing"
+              className="rounded-md data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm transition-all duration-200 text-gray-600"
+            >
+              벤치마킹 소싱
+            </TabsTrigger>
           </TabsList>
 
           {/* 상품수집 탭 */}
-          <TabsContent value="collection" className="mt-6">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">상품수집</h2>
-                <p className="text-gray-600">상품 정보를 수집하고 관리합니다</p>
+          <TabsContent value="collection" className="mt-8">
+            <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
+              <div className="mb-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">상품수집</h2>
+                  <p className="text-gray-600 text-sm">스마트한 상품 정보 수집 및 관리</p>
+                </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <div className="flex justify-center">
                   <Button
                     onClick={handleCollectionToggle}
-                    className={`h-12 text-base px-8 ${
+                    className={`h-14 text-lg px-12 rounded-2xl font-semibold transition-all duration-200 transform hover:-translate-y-0.5 ${
                       isCollecting
-                        ? 'bg-red-600 hover:bg-red-700 text-white'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl'
+                        : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl'
                     }`}
                   >
                     {isCollecting ? '수집 종료' : '수집 실행'}
                   </Button>
                 </div>
 
-                <div className="bg-gray-50 border rounded-lg p-6 min-h-[300px]">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">진행상황</h3>
+                <div className="bg-gradient-to-br from-gray-50/80 to-blue-50/50 backdrop-blur-sm border border-white/40 rounded-2xl p-8 min-h-[400px] shadow-lg">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold text-gray-900">진행상황</h3>
+                  </div>
                   <div className="space-y-4">
                     {isCollecting ? (
                       <div className="space-y-4">
@@ -279,22 +372,26 @@ const MainPage: React.FC = () => {
                         )}
 
                         {/* 상태 메시지 */}
-                        <div className="text-center">
-                          {/* 대기 중이 아닐 때만 파란색 상태 텍스트 표시 */}
-                          {(!progress.waitTime || progress.waitTime <= 0) && (
-                            <p className="text-blue-600 font-medium mb-2">{progress.status}</p>
-                          )}
-
-                          {/* 대기시간 카운트다운 */}
-                          {progress.waitTime && progress.waitTime > 0 && (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                              <p className="text-yellow-800 text-sm">다음 상품까지 대기 중... {progress.waitTime}초</p>
-                              <div className="w-full bg-yellow-200 rounded-full h-1 mt-2">
+                        <div className="w-full">
+                          {/* 대기 중이 아닐 때는 파란색 상태 텍스트만 표시 */}
+                          {!progress.waitTime || progress.waitTime <= 0 ? (
+                            <div className="text-center">
+                              <p className="text-blue-600 font-medium">{progress.status}</p>
+                            </div>
+                          ) : (
+                            /* 대기 중일 때는 한 줄 전체를 사용 */
+                            <div className="w-full flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+                                <span className="text-amber-800 font-medium text-sm">대기 중</span>
+                              </div>
+                              <div className="flex-1 bg-amber-200 rounded-full h-2">
                                 <div
-                                  className="bg-yellow-500 h-1 rounded-full transition-all duration-1000"
+                                  className="bg-amber-500 h-2 rounded-full transition-all duration-1000"
                                   style={{ width: `${((progress.waitTime || 0) / 15) * 100}%` }}
                                 ></div>
                               </div>
+                              <div className="text-amber-600 text-sm font-medium">{progress.waitTime}초</div>
                             </div>
                           )}
                         </div>
@@ -325,70 +422,109 @@ const MainPage: React.FC = () => {
           </TabsContent>
 
           {/* 벤치마킹 소싱 탭 */}
-          <TabsContent value="sourcing" className="mt-6">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">벤치마킹 소싱</h2>
-                <p className="text-gray-600">경쟁사 상품을 분석하고 소싱합니다</p>
+          <TabsContent value="sourcing" className="mt-8">
+            <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
+              <div className="mb-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">벤치마킹 소싱</h2>
+                  <p className="text-gray-600 text-sm">경쟁사 상품 분석 및 스마트 소싱</p>
+                </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {/* 금액 설정 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="minAmount" className="text-sm font-medium">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <Label htmlFor="minAmount" className="text-sm font-medium text-gray-700">
                       최저금액
                     </Label>
-                    <Input id="minAmount" type="text" placeholder="최저금액을 입력하세요" className="h-12" />
+                    <Input
+                      id="minAmount"
+                      type="text"
+                      placeholder="최저금액을 입력하세요"
+                      className="h-12 rounded-xl border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200"
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maxAmount" className="text-sm font-medium">
+                  <div className="space-y-3">
+                    <Label htmlFor="maxAmount" className="text-sm font-medium text-gray-700">
                       최고금액
                     </Label>
-                    <Input id="maxAmount" type="text" placeholder="최고금액을 입력하세요" className="h-12" />
+                    <Input
+                      id="maxAmount"
+                      type="text"
+                      placeholder="최고금액을 입력하세요"
+                      className="h-12 rounded-xl border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200"
+                    />
                   </div>
                 </div>
 
                 {/* 키워드 */}
-                <div className="space-y-2">
-                  <Label htmlFor="keywords" className="text-sm font-medium">
+                <div className="space-y-3">
+                  <Label htmlFor="keywords" className="text-sm font-medium text-gray-700">
                     키워드
                   </Label>
-                  <Input id="keywords" type="text" placeholder="키워드를 입력하세요" className="h-12" />
+                  <Input
+                    id="keywords"
+                    type="text"
+                    placeholder="키워드를 입력하세요"
+                    className="h-12 rounded-xl border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200"
+                  />
                 </div>
 
                 {/* 옵션 체크박스 */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-gray-900">포함 옵션</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="includeNaver" />
-                      <Label htmlFor="includeNaver" className="text-sm">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    포함 옵션
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
+                      <Checkbox id="includeNaver" className="border-gray-300 rounded-md" />
+                      <Label htmlFor="includeNaver" className="text-sm font-medium text-gray-700 cursor-pointer">
                         네이버 포함
                       </Label>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="includeAuction" />
-                      <Label htmlFor="includeAuction" className="text-sm">
+                    <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
+                      <Checkbox id="includeAuction" className="border-gray-300 rounded-md" />
+                      <Label htmlFor="includeAuction" className="text-sm font-medium text-gray-700 cursor-pointer">
                         옥션 포함
                       </Label>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="includeBest" />
-                      <Label htmlFor="includeBest" className="text-sm">
+                    <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
+                      <Checkbox id="includeBest" className="border-gray-300 rounded-md" />
+                      <Label htmlFor="includeBest" className="text-sm font-medium text-gray-700 cursor-pointer">
                         베스트 상품 포함
                       </Label>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="includeNew" />
-                      <Label htmlFor="includeNew" className="text-sm">
+                    <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
+                      <Checkbox id="includeNew" className="border-gray-300 rounded-md" />
+                      <Label htmlFor="includeNew" className="text-sm font-medium text-gray-700 cursor-pointer">
                         신상품 포함
                       </Label>
                     </div>
                   </div>
                 </div>
 
-                <Button className="w-full h-12 text-base">소싱 시작</Button>
+                <Button className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                    소싱 시작
+                  </div>
+                </Button>
               </div>
             </div>
           </TabsContent>
