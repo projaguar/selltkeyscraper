@@ -4,6 +4,9 @@
  */
 
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { execSync } from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
 
 export interface BrowserConfig {
   headless?: boolean;
@@ -31,6 +34,54 @@ export class BrowserService {
       BrowserService.instance = new BrowserService();
     }
     return BrowserService.instance;
+  }
+
+  /**
+   * Windows에서 Chrome 브라우저 경로 찾기
+   */
+  private findChromePath(): string | null {
+    const platform = process.platform;
+
+    if (platform === 'win32') {
+      const possiblePaths = [
+        // 일반적인 Chrome 설치 경로들
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
+        path.join(process.env.PROGRAMFILES || '', 'Google\\Chrome\\Application\\chrome.exe'),
+        path.join(process.env['PROGRAMFILES(X86)'] || '', 'Google\\Chrome\\Application\\chrome.exe'),
+      ];
+
+      // 각 경로를 확인하여 존재하는 Chrome 실행 파일 찾기
+      for (const chromePath of possiblePaths) {
+        if (fs.existsSync(chromePath)) {
+          console.log('[BrowserService] Chrome 경로 발견:', chromePath);
+          return chromePath;
+        }
+      }
+
+      // 레지스트리에서 Chrome 경로 찾기 (Windows)
+      try {
+        const regQuery =
+          'reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe" /ve';
+        const result = execSync(regQuery, { encoding: 'utf8', timeout: 5000 });
+        const match = result.match(/REG_SZ\s+(.+)/);
+        if (match && match[1]) {
+          const chromePath = match[1].trim();
+          if (fs.existsSync(chromePath)) {
+            console.log('[BrowserService] 레지스트리에서 Chrome 경로 발견:', chromePath);
+            return chromePath;
+          }
+        }
+      } catch (error) {
+        console.log('[BrowserService] 레지스트리에서 Chrome 경로를 찾을 수 없습니다:', error);
+      }
+
+      console.warn('[BrowserService] Windows에서 Chrome을 찾을 수 없습니다. 기본 경로를 사용합니다.');
+      return null;
+    }
+
+    return null; // Windows가 아닌 경우 기본 경로 사용
   }
 
   /**
@@ -66,7 +117,9 @@ export class BrowserService {
         ...config,
       };
 
-      this.browser = await puppeteer.launch({
+      // Windows에서 Chrome 경로 찾기
+      const chromePath = this.findChromePath();
+      const launchOptions: any = {
         headless: defaultConfig.headless,
         args: [
           '--no-sandbox',
@@ -86,13 +139,34 @@ export class BrowserService {
         ],
         userDataDir: defaultConfig.userDataDir,
         defaultViewport: null, // 기본 뷰포트 설정 비활성화
-      });
+      };
+
+      // Windows에서 Chrome 경로가 발견되면 사용
+      if (chromePath) {
+        launchOptions.executablePath = chromePath;
+        console.log('[BrowserService] Chrome 실행 경로 설정:', chromePath);
+      } else {
+        console.log('[BrowserService] 기본 Chrome 경로 사용');
+      }
+
+      this.browser = await puppeteer.launch(launchOptions);
 
       this.isInitialized = true;
       console.log('[BrowserService] 브라우저 초기화 완료');
     } catch (error) {
       console.error('[BrowserService] 브라우저 초기화 오류:', error);
-      throw new Error('브라우저 초기화에 실패했습니다.');
+
+      // Windows에서 Chrome을 찾을 수 없는 경우 특별한 에러 메시지
+      if (process.platform === 'win32') {
+        const chromePath = this.findChromePath();
+        if (!chromePath) {
+          throw new Error(
+            'Windows에서 Chrome 브라우저를 찾을 수 없습니다. Chrome을 설치하거나 올바른 경로에 있는지 확인해주세요.',
+          );
+        }
+      }
+
+      throw new Error(`브라우저 초기화에 실패했습니다: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       this.isInitializing = false; // 락 해제
     }
