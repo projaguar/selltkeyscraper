@@ -11,6 +11,13 @@ interface CollectionResponse {
   message: string;
 }
 
+interface KeywordData {
+  keyword: string;
+  searchVolume: number;
+  competition: string;
+  trend: string;
+}
+
 interface Api {
   login: (userId: string, password: string) => Promise<LoginResponse>;
   getSavedCredentials: () => Promise<{
@@ -34,6 +41,7 @@ interface Api {
   }>;
   checkNaverLoginStatus: () => Promise<boolean>;
   openNaverLoginPage: () => Promise<{ success: boolean; message: string }>;
+  fetchKeywords: (userNum: string) => Promise<{ result: boolean; payload: string[]; message?: string }>;
 }
 
 declare global {

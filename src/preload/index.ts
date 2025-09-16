@@ -13,6 +13,7 @@ const api = {
   getCollectionProgress: () => ipcRenderer.invoke('get-collection-progress'),
   checkNaverLoginStatus: () => ipcRenderer.invoke('check-naver-login-status'),
   openNaverLoginPage: () => ipcRenderer.invoke('open-naver-login-page'),
+  fetchKeywords: (userNum: string) => ipcRenderer.invoke('fetch-keywords', userNum),
 };
 
 // Use `contextBridge` APIs to expose Electron APIs to

@@ -8,8 +8,8 @@ import { browserService, collectionService } from './services';
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 1200,
+    height: 950,
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
@@ -190,6 +190,27 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error('네이버 로그인 페이지 열기 오류:', error);
       return { success: false, message: '네이버 로그인 페이지를 열 수 없습니다.' };
+    }
+  });
+
+  // 키워드 가져오기
+  ipcMain.handle('fetch-keywords', async (_, userNum: string) => {
+    try {
+      console.log('키워드 가져오기 요청:', userNum);
+      const response = await axios.get(`https://selltkey.com/scb/api/getRecommandKeyword.asp?usernum=${userNum}`);
+      const keywords = response.data.result.split(',');
+
+      return {
+        result: true,
+        payload: keywords,
+      };
+    } catch (error) {
+      console.error('키워드 가져오기 실패:', error);
+      return {
+        result: false,
+        message: error.message,
+        payload: [],
+      };
     }
   });
 

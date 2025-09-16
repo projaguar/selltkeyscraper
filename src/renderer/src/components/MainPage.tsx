@@ -5,11 +5,14 @@ import { Label } from '@renderer/components/ui/label';
 import { Checkbox } from '@renderer/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs';
 import { useAuth } from '../contexts/AuthContext';
+import { KeywordHelper } from './KeywordHelper';
 
 const MainPage: React.FC = () => {
   const { logout, userInfo } = useAuth();
   const [activeTab, setActiveTab] = useState('collection');
   const [isCollecting, setIsCollecting] = useState(false);
+  const [isKeywordHelperOpen, setIsKeywordHelperOpen] = useState(false);
+  const [keywords, setKeywords] = useState('');
   const [isNaverLoggedIn, setIsNaverLoggedIn] = useState(false);
   const [isCheckingNaverLogin, setIsCheckingNaverLogin] = useState(true);
   const [progress, setProgress] = useState<{
@@ -184,6 +187,18 @@ const MainPage: React.FC = () => {
       console.error('수집 작업 처리 오류:', error);
       alert('작업 처리 중 오류가 발생했습니다.');
     }
+  };
+
+  const handleKeywordHelperOpen = () => {
+    setIsKeywordHelperOpen(true);
+  };
+
+  const handleKeywordHelperClose = () => {
+    setIsKeywordHelperOpen(false);
+  };
+
+  const handleSelectKeywords = (selectedKeywords: string[]) => {
+    setKeywords(selectedKeywords.join(', '));
   };
 
   // 네이버 로그인 대기 화면
@@ -443,6 +458,7 @@ const MainPage: React.FC = () => {
                       type="text"
                       placeholder="최저금액을 입력하세요"
                       className="h-12 rounded-xl border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200"
+                      defaultValue={0}
                     />
                   </div>
                   <div className="space-y-3">
@@ -454,20 +470,34 @@ const MainPage: React.FC = () => {
                       type="text"
                       placeholder="최고금액을 입력하세요"
                       className="h-12 rounded-xl border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200"
+                      defaultValue={99999999}
                     />
                   </div>
                 </div>
 
                 {/* 키워드 */}
                 <div className="space-y-3">
-                  <Label htmlFor="keywords" className="text-sm font-medium text-gray-700">
-                    키워드
-                  </Label>
-                  <Input
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="keywords" className="text-sm font-medium text-gray-700">
+                      키워드
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs px-3 py-1 h-7 border-gray-300 text-gray-600 hover:bg-gray-50"
+                      onClick={handleKeywordHelperOpen}
+                    >
+                      키워드 도우미
+                    </Button>
+                  </div>
+                  <textarea
                     id="keywords"
-                    type="text"
-                    placeholder="키워드를 입력하세요"
-                    className="h-12 rounded-xl border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200"
+                    value={keywords}
+                    onChange={(e) => setKeywords(e.target.value)}
+                    placeholder="키워드를 입력하세요 (콤마로 구분하여 여러 개 입력 가능)"
+                    rows={4}
+                    className="w-full rounded-xl border border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200 p-3 text-sm resize-none"
                   />
                 </div>
 
@@ -486,7 +516,7 @@ const MainPage: React.FC = () => {
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
-                      <Checkbox id="includeNaver" className="border-gray-300 rounded-md" />
+                      <Checkbox id="includeNaver" className="border-gray-300 rounded-md" defaultChecked={true} />
                       <Label htmlFor="includeNaver" className="text-sm font-medium text-gray-700 cursor-pointer">
                         네이버 포함
                       </Label>
@@ -498,7 +528,7 @@ const MainPage: React.FC = () => {
                       </Label>
                     </div>
                     <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
-                      <Checkbox id="includeBest" className="border-gray-300 rounded-md" />
+                      <Checkbox id="includeBest" className="border-gray-300 rounded-md" defaultChecked={true} />
                       <Label htmlFor="includeBest" className="text-sm font-medium text-gray-700 cursor-pointer">
                         베스트 상품 포함
                       </Label>
@@ -530,6 +560,14 @@ const MainPage: React.FC = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* 키워드 도우미 다이얼로그 */}
+      <KeywordHelper
+        isOpen={isKeywordHelperOpen}
+        onClose={handleKeywordHelperClose}
+        onSelectKeywords={handleSelectKeywords}
+        userNum={userInfo?.usernum || ''}
+      />
     </div>
   );
 };
