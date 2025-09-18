@@ -3,7 +3,7 @@ import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import axios from 'axios';
-import { browserService, collectionService } from './services';
+import { browserService, collectionService, sourcingService } from './services';
 
 function createWindow(): void {
   // Create the browser window.
@@ -210,6 +210,44 @@ app.whenReady().then(() => {
         result: false,
         message: error.message,
         payload: [],
+      };
+    }
+  });
+
+  // 소싱 시작
+  ipcMain.handle('start-sourcing', async (_, config) => {
+    try {
+      console.log('소싱 시작 요청 받음:', config);
+      const result = await sourcingService.startSourcing(config);
+      return result;
+    } catch (error) {
+      console.error('소싱 시작 오류:', error);
+      return { success: false, message: '소싱 시작에 실패했습니다.' };
+    }
+  });
+
+  // 소싱 중지
+  ipcMain.handle('stop-sourcing', async () => {
+    try {
+      console.log('소싱 중지 요청 받음');
+      const result = await sourcingService.stopSourcing();
+      return result;
+    } catch (error) {
+      console.error('소싱 중지 오류:', error);
+      return { success: false, message: '소싱 중지에 실패했습니다.' };
+    }
+  });
+
+  // 소싱 진행상황 조회
+  ipcMain.handle('get-sourcing-progress', async () => {
+    try {
+      return sourcingService.getProgress();
+    } catch (error) {
+      console.error('소싱 진행상황 조회 오류:', error);
+      return {
+        isRunning: false,
+        config: null,
+        progress: '오류 발생',
       };
     }
   });

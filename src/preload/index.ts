@@ -14,6 +14,9 @@ const api = {
   checkNaverLoginStatus: () => ipcRenderer.invoke('check-naver-login-status'),
   openNaverLoginPage: () => ipcRenderer.invoke('open-naver-login-page'),
   fetchKeywords: (userNum: string) => ipcRenderer.invoke('fetch-keywords', userNum),
+  startSourcing: (config: any) => ipcRenderer.invoke('start-sourcing', config),
+  stopSourcing: () => ipcRenderer.invoke('stop-sourcing'),
+  getSourcingProgress: () => ipcRenderer.invoke('get-sourcing-progress'),
 };
 
 // Use `contextBridge` APIs to expose Electron APIs to

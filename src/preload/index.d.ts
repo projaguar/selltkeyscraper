@@ -11,6 +11,22 @@ interface CollectionResponse {
   message: string;
 }
 
+interface SourcingConfig {
+  minAmount: string;
+  maxAmount: string;
+  keywords: string;
+  includeNaver: boolean;
+  includeAuction: boolean;
+  includeBest: boolean;
+  includeNew: boolean;
+}
+
+interface SourcingResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
 interface KeywordData {
   keyword: string;
   searchVolume: number;
@@ -42,6 +58,13 @@ interface Api {
   checkNaverLoginStatus: () => Promise<boolean>;
   openNaverLoginPage: () => Promise<{ success: boolean; message: string }>;
   fetchKeywords: (userNum: string) => Promise<{ result: boolean; payload: string[]; message?: string }>;
+  startSourcing: (config: SourcingConfig) => Promise<SourcingResponse>;
+  stopSourcing: () => Promise<SourcingResponse>;
+  getSourcingProgress: () => Promise<{
+    isRunning: boolean;
+    config: SourcingConfig | null;
+    progress: string;
+  }>;
 }
 
 declare global {

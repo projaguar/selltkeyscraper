@@ -476,6 +476,14 @@ export class BrowserService {
   }
 
   /**
+   * 브라우저 인스턴스 반환
+   * @returns 브라우저 인스턴스 또는 null
+   */
+  getBrowser(): Browser | null {
+    return this.browser;
+  }
+
+  /**
    * 브라우저 상태 확인
    * @returns 브라우저 초기화 여부
    */

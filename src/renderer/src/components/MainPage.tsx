@@ -12,9 +12,20 @@ const MainPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('collection');
   const [isCollecting, setIsCollecting] = useState(false);
   const [isKeywordHelperOpen, setIsKeywordHelperOpen] = useState(false);
-  const [keywords, setKeywords] = useState('');
   const [isNaverLoggedIn, setIsNaverLoggedIn] = useState(false);
   const [isCheckingNaverLogin, setIsCheckingNaverLogin] = useState(true);
+  
+  // 소싱 관련 상태
+  const [isSourcing, setIsSourcing] = useState(false);
+  const [sourcingConfig, setSourcingConfig] = useState({
+    minAmount: '0',
+    maxAmount: '9999999',
+    keywords: '',
+    includeNaver: true,
+    includeAuction: false,
+    includeBest: true,
+    includeNew: false,
+  });
   const [progress, setProgress] = useState<{
     isRunning: boolean;
     usernum: string | null;
@@ -116,6 +127,58 @@ const MainPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [isCollecting]);
 
+  // 소싱 시작/중지 핸들러
+  const handleSourcingToggle = async (): Promise<void> => {
+    try {
+      if (isSourcing) {
+        // 소싱 중지
+        console.log('소싱 중지 요청');
+        const result = await window.api.stopSourcing();
+        if (result.success) {
+          setIsSourcing(false);
+          console.log('소싱 중지 성공:', result.message);
+        } else {
+          alert(`소싱 중지 실패: ${result.message}`);
+        }
+      } else {
+        // 소싱 시작
+        console.log('소싱 시작 요청:', sourcingConfig);
+        
+        // 설정 유효성 검사
+        if (!sourcingConfig.keywords.trim()) {
+          alert('키워드를 입력해주세요.');
+          return;
+        }
+        if (!sourcingConfig.minAmount || !sourcingConfig.maxAmount) {
+          alert('최저/최고 금액을 입력해주세요.');
+          return;
+        }
+        if (!sourcingConfig.includeNaver && !sourcingConfig.includeAuction) {
+          alert('최소 하나의 플랫폼을 선택해주세요.');
+          return;
+        }
+
+        // UI 상태를 즉시 업데이트
+        setIsSourcing(true);
+
+        const result = await window.api.startSourcing(sourcingConfig);
+        console.log('소싱 시작 결과:', result);
+        
+        if (result.success) {
+          console.log('소싱 시작 성공:', result.message);
+        } else {
+          // 실패 시 상태 되돌리기
+          setIsSourcing(false);
+          alert(`소싱 시작 실패: ${result.message}`);
+        }
+      }
+    } catch (error) {
+      console.error('소싱 작업 처리 오류:', error);
+      setIsSourcing(false);
+      alert('소싱 작업 처리 중 오류가 발생했습니다.');
+    }
+  };
+
   const handleCollectionToggle = async (): Promise<void> => {
     // 1. 유저번호 확인
     if (!userInfo?.usernum) {
@@ -198,7 +261,8 @@ const MainPage: React.FC = () => {
   };
 
   const handleSelectKeywords = (selectedKeywords: string[]) => {
-    setKeywords(selectedKeywords.join(', '));
+    const keywordString = selectedKeywords.join(', ');
+    setSourcingConfig(prev => ({ ...prev, keywords: keywordString }));
   };
 
   // 네이버 로그인 대기 화면
@@ -458,7 +522,8 @@ const MainPage: React.FC = () => {
                       type="text"
                       placeholder="최저금액을 입력하세요"
                       className="h-12 rounded-xl border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200"
-                      defaultValue={0}
+                      value={sourcingConfig.minAmount}
+                      onChange={(e) => setSourcingConfig(prev => ({ ...prev, minAmount: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-3">
@@ -470,7 +535,8 @@ const MainPage: React.FC = () => {
                       type="text"
                       placeholder="최고금액을 입력하세요"
                       className="h-12 rounded-xl border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200"
-                      defaultValue={99999999}
+                      value={sourcingConfig.maxAmount}
+                      onChange={(e) => setSourcingConfig(prev => ({ ...prev, maxAmount: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -493,8 +559,8 @@ const MainPage: React.FC = () => {
                   </div>
                   <textarea
                     id="keywords"
-                    value={keywords}
-                    onChange={(e) => setKeywords(e.target.value)}
+                    value={sourcingConfig.keywords}
+                    onChange={(e) => setSourcingConfig(prev => ({ ...prev, keywords: e.target.value }))}
                     placeholder="키워드를 입력하세요 (콤마로 구분하여 여러 개 입력 가능)"
                     rows={4}
                     className="w-full rounded-xl border border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200 p-3 text-sm resize-none"
@@ -516,25 +582,45 @@ const MainPage: React.FC = () => {
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
-                      <Checkbox id="includeNaver" className="border-gray-300 rounded-md" defaultChecked={true} />
+                      <Checkbox 
+                        id="includeNaver" 
+                        className="border-gray-300 rounded-md" 
+                        checked={sourcingConfig.includeNaver}
+                        onCheckedChange={(checked) => setSourcingConfig(prev => ({ ...prev, includeNaver: !!checked }))}
+                      />
                       <Label htmlFor="includeNaver" className="text-sm font-medium text-gray-700 cursor-pointer">
                         네이버 포함
                       </Label>
                     </div>
                     <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
-                      <Checkbox id="includeAuction" className="border-gray-300 rounded-md" />
+                      <Checkbox 
+                        id="includeAuction" 
+                        className="border-gray-300 rounded-md" 
+                        checked={sourcingConfig.includeAuction}
+                        onCheckedChange={(checked) => setSourcingConfig(prev => ({ ...prev, includeAuction: !!checked }))}
+                      />
                       <Label htmlFor="includeAuction" className="text-sm font-medium text-gray-700 cursor-pointer">
                         옥션 포함
                       </Label>
                     </div>
                     <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
-                      <Checkbox id="includeBest" className="border-gray-300 rounded-md" defaultChecked={true} />
+                      <Checkbox 
+                        id="includeBest" 
+                        className="border-gray-300 rounded-md" 
+                        checked={sourcingConfig.includeBest}
+                        onCheckedChange={(checked) => setSourcingConfig(prev => ({ ...prev, includeBest: !!checked }))}
+                      />
                       <Label htmlFor="includeBest" className="text-sm font-medium text-gray-700 cursor-pointer">
                         베스트 상품 포함
                       </Label>
                     </div>
                     <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
-                      <Checkbox id="includeNew" className="border-gray-300 rounded-md" />
+                      <Checkbox 
+                        id="includeNew" 
+                        className="border-gray-300 rounded-md" 
+                        checked={sourcingConfig.includeNew}
+                        onCheckedChange={(checked) => setSourcingConfig(prev => ({ ...prev, includeNew: !!checked }))}
+                      />
                       <Label htmlFor="includeNew" className="text-sm font-medium text-gray-700 cursor-pointer">
                         신상품 포함
                       </Label>
@@ -542,7 +628,11 @@ const MainPage: React.FC = () => {
                   </div>
                 </div>
 
-                <Button className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                <Button 
+                  onClick={handleSourcingToggle}
+                  disabled={isSourcing}
+                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
                   <div className="flex items-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
@@ -552,7 +642,7 @@ const MainPage: React.FC = () => {
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                       />
                     </svg>
-                    소싱 시작
+                    {isSourcing ? '소싱 중...' : '소싱 시작'}
                   </div>
                 </Button>
               </div>
