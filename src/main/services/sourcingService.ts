@@ -540,7 +540,15 @@ export class SourcingService {
 
       console.log('[SourcingService] API URL:', apiUrl);
 
-      // JavaScript inject로 API fetch 실행
+      // TODO: 임시로 API 방식을 실패 처리하여 클릭 방식 테스트
+      console.log('[SourcingService] API 방식을 임시로 비활성화, 클릭 방식으로 대체');
+
+      // API 방식 실패로 가정하고 클릭 방식으로 대체
+      console.log('[SourcingService] API 방식 실패, 클릭 방식으로 데이터 수집 시도');
+      return await this.collectDataByClicking(page, firstKeyword);
+
+      /*
+      // JavaScript inject로 API fetch 실행 (임시 비활성화)
       const fetchResult = await page.evaluate(async (url) => {
         try {
           console.log('🌐 API fetch 시작:', url);
@@ -601,6 +609,7 @@ export class SourcingService {
           message: `쇼핑 데이터 수집 실패: ${fetchResult.error}`,
         };
       }
+      */
     } catch (error) {
       console.error('[SourcingService] 쇼핑 데이터 수집 오류:', error);
       return {
@@ -706,6 +715,37 @@ export class SourcingService {
       config: this.currentConfig,
       progress: this.isRunning ? '소싱 진행 중...' : '대기 중',
     };
+  }
+
+  /**
+   * 클릭 방식으로 상품 데이터 수집 (껍데기 함수)
+   * @param page Puppeteer 페이지 인스턴스
+   * @param keyword 검색 키워드
+   */
+  private async collectDataByClicking(page: any, keyword: string): Promise<SourcingResult> {
+    try {
+      console.log(`[SourcingService] 클릭 방식 데이터 수집 시작 - 키워드: "${keyword}"`);
+
+      // TODO: 실제 클릭 방식 데이터 수집 로직 구현
+      // 1. 페이지에서 상품 목록 요소들 찾기
+      // 2. 각 상품 요소를 클릭하여 상세 정보 수집
+      // 3. 수집된 데이터 정리 및 반환
+
+      // 임시로 성공 응답 반환
+      console.log('[SourcingService] 클릭 방식 데이터 수집 완료 (임시 구현)');
+
+      return {
+        success: true,
+        message: `클릭 방식으로 키워드 "${keyword}" 데이터 수집 완료 (임시)`,
+        data: [], // 임시로 빈 배열 반환
+      };
+    } catch (error) {
+      console.error('[SourcingService] 클릭 방식 데이터 수집 오류:', error);
+      return {
+        success: false,
+        message: '클릭 방식 데이터 수집 중 오류가 발생했습니다.',
+      };
+    }
   }
 }
 

@@ -1,0 +1,74 @@
+﻿_page.search.nextData = new HtmlHandler({
+   "selector": "#__NEXT_DATA__",
+   "data": {
+      "items": [
+         "clova", "exhibition", "globalPopupLayer", "keptProducts", "loungeConfig",
+         "productSimpleView", "searchFilter", "widgetStates", "abt", "addressBook",
+         "aitems", "benefit", "bestProducts", "brandStatuses", "bundle", "cart",
+         "cartBridgeLayerState", "cartProducts", "category", "categoryOtherProduct",
+         "cologger", "consumerSurveys", "coordiProducts", "customReview", "datalab",
+         "defaultShippingAddress", "delivery", "deliverySavingProduct", "detailReviews",
+         "exceptionalCategory", "expectPoint", "flipState", "fulfillment", "groupProduct",
+         "infiniteGridScrollTop", "inflowBenefits", "interestProduct", "keepCartRecommend",
+         "keepStore", "keptRelationProducts", "keywordSearch", "layoutStatus", "live",
+         "loungeBenefit", "loungeJoin", "loungeMember", "loungeMy", "loungeNotice",
+         "loungeSimpleMember", "loungeStory", "marketingMessage", "my", "myKeptProducts",
+         "myListProducts", "naverMember", "naverMembership", "notice", "onePlusDealSharePointConfig",
+         "optimizeBenefit", "optimizeRequest", "product", "productBestReviews", "productBlogConfigs",
+         "productDelivery", "productGift", "productReviewGalleryAttaches", "productReviewSummary",
+         "productReviews", "qna", "randomNo", "recentOtherProduct", "recentlyViewedProducts",
+         "relationProducts", "rental", "reviewDetail", "reviewEvent", "reviewLike",
+         "reviewsFilter", "scrollKept", "seViewerContent", "searchFormLayer", "selectedOptions",
+         "selectiveLive", "serverLocationPath", "serverReferer", "serverRenderStatus",
+         "serverRendered", "serviceConfig", "shoppingStory", "storeGradeBenefit", "storeProducts",
+         "talktalk", "talktalkSearch", "toast", "userCollectItems", "verticalInventoryItems", "visit",
+
+         // _ROOT_
+         "rmidInfoMap", "assetPrefix", "buildId", "dynamicIds", "gssp", "isFallback", "page", "query",
+         "runtimeConfig", "scriptLoader",
+         // props
+         "__N_SSP",
+         // props.pageProps
+         "banners", "bookAnswer", "bucketId", "cartProductCount",
+         "cmpCategories", "cmpResult", "dateStatus", "deepSearch", "dehydratedState", "deliveryAddress",
+         "isMobileDomain", "isValidLengthQuery", "multiModalSasResult", "nLogPageKey", "nclick",
+         "nluAppliedResult", "nsc", "ogTag", "pageId", "pageType", "searchParam", "surls", "trCode",
+         "userInfo", "partialSearched",
+
+         // props.pageProps.initialState,
+         "applySmartPriceSort", "categoryNames", "displayCategoryParentId", "eventBanner", "isDisplayCategory",
+         "isPlayingVideo", "queryValidate", "recommendTrend", "searchBanInfo", "selectedFilters",
+         "smartPriceSort", "stringQueryType", "subFilters", "talk", "catalog", "mainFilters", "bookSasProducts",
+
+         // props.pageProps.initialState.products
+         "adBucketId", "orgQueryTotal", "total"
+      ],
+      "listItem": [
+         "type", "adId", "adProductInfoEnabled"
+      ]
+   },
+   val() {
+      const value = JSON.parse(this.node().innerHTML.trim());
+      this.recursiveDelete(value, this.data.items);
+      return value;
+   },
+   recursiveDelete(obj, fields) {
+      if (typeof obj === 'object' && obj !== null) {
+         if (Array.isArray(obj))
+            obj.forEach(item => {
+               if (typeof item === "object") this.recursiveDelete(item, fields)
+            });
+         else {
+            this.deleteFields(obj, fields);
+            Object.values(obj).forEach(value => {
+               if (typeof value === 'object') this.recursiveDelete(value, fields);
+            }, this);
+         }
+      }
+   },
+   deleteFields: (obj, fields) => {
+      fields.forEach(field => {
+         if (obj.hasOwnProperty(field)) delete obj[field];
+      });
+   }
+});

@@ -110,12 +110,18 @@ export class BrowserService {
       console.log('[BrowserService] 브라우저 초기화 시작... (이전 상태:', this.isInitialized, ')');
 
       const defaultConfig = {
-        headless: false,
+        headless: false, // 반드시 false로 설정
         width: 1366, // 일반적인 데스크톱 해상도
         height: 768,
         userDataDir: undefined,
         ...config,
       };
+
+      // headless가 true로 설정되어 있으면 강제로 false로 변경
+      if (defaultConfig.headless) {
+        console.log('[BrowserService] headless 모드가 감지되어 강제로 false로 변경합니다.');
+        defaultConfig.headless = false;
+      }
 
       // Windows에서 Chrome 경로 찾기
       const chromePath = this.findChromePath();
@@ -148,6 +154,12 @@ export class BrowserService {
       } else {
         console.log('[BrowserService] 기본 Chrome 경로 사용');
       }
+
+      console.log('[BrowserService] 브라우저 실행 옵션:', {
+        headless: launchOptions.headless,
+        args: launchOptions.args,
+        executablePath: launchOptions.executablePath,
+      });
 
       this.browser = await puppeteer.launch(launchOptions);
 
@@ -264,7 +276,7 @@ export class BrowserService {
             // 이미 네이버에 있으면 새로고침하지 않고 현재 상태만 확인
             console.log('[BrowserService] 네이버 페이지 상태 확인 중 (새로고침 없음)');
           }
-        } catch (_error) {
+        } catch {
           // 페이지 접근 오류 시 새로 생성
           console.log('[BrowserService] 페이지 접근 오류, 새 페이지 생성');
           page = await this.createPage();
@@ -441,7 +453,7 @@ export class BrowserService {
 
             return;
           }
-        } catch (_error) {
+        } catch {
           // 해당 선택자로 찾지 못함, 다음 선택자 시도
           continue;
         }

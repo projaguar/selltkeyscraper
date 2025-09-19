@@ -1,0 +1,61 @@
+﻿async apiData(query) {
+      const data = encodeURIComponent(query);
+       let api = "/api/search/all?sort=rel&pagingIndex=1&pagingSize=80&viewType=list&productSet=checkout&frm=NVSCPRO&query=$1&origQuery=$1&adQuery=$1&iq=&eq=&xq=&window=&agency=true";
+      //let api = "/api/search/all?sort=rel&pagingIndex=1&pagingSize=40&viewType=list&productSet=total&frm=NVSCPRO&query=$1&origQuery=$1&adQuery=$1&iq=&eq=&xq=&window="
+      api = api.replace(/\$1/g, data);
+      this.log(">> [API] " + api);
+      const rst = await Helper.fetch(api, null, {
+         "method": "GET",
+         "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Logic": "PART"
+         }
+      });
+      this.log(">> [API] result", rst);
+
+      return rst.value;
+   },
+   async send(spricelimit, epricelimit) {
+      if (!this.isValid()) return false;
+
+      const query = this.data.response.squery;
+      const origin = await this.apiData(query);
+      
+      let products;
+      if (origin) {
+         products = origin.shoppingResult.products.map(item => {
+            return {
+               "mallName": item.mallName,
+               "mallPcUrl": item.mallPcUrl
+            };
+         });
+         const map = new Map(products.map(p => [p.mallPcUrl, p]));
+         products = [...map.values()];
+
+      } else
+         products = [];
+      this.log(">> [PRODUCTS] ", products);
+
+      if (!products.length) {
+         this.toast("데이터를 로드하지 못했습니다.");
+         return false;
+      }
+      const data = Object.assign(this.data.response, {
+         "usernum": this.getUser().usernum,
+         "bestyn": "Y",
+         "newyn": "N",
+         "inserturl": "https://selltkey.com/scb/api/setSearchResultDirect.asp",
+         spricelimit,
+         epricelimit,
+         "jsonstring": { products }
+      });
+      this.log(">> [SEND] searchResultSave", data);
+      const rst = await Helper.sendMessage("searchResultSaveTemp", data);
+      this.log(">> [SEND] result", rst);
+
+      if (rst.success)
+         this.toast("성공적으로 데이터를 전송했습니다.");
+      else
+         this.toast(rst.message);
+      return true;
+   }
