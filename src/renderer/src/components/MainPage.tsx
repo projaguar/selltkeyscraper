@@ -19,7 +19,7 @@ const MainPage: React.FC = () => {
   const [isSourcing, setIsSourcing] = useState(false);
   const [sourcingConfig, setSourcingConfig] = useState({
     minAmount: '0',
-    maxAmount: '9999999',
+    maxAmount: '99999999',
     keywords: '',
     includeNaver: true,
     includeAuction: false,
@@ -161,7 +161,13 @@ const MainPage: React.FC = () => {
         // UI 상태를 즉시 업데이트
         setIsSourcing(true);
 
-        const result = await window.api.startSourcing(sourcingConfig);
+        // usernum을 포함한 설정 전달
+        const sourcingConfigWithUser = {
+          ...sourcingConfig,
+          usernum: userInfo?.usernum || '',
+        };
+
+        const result = await window.api.startSourcing(sourcingConfigWithUser);
         console.log('소싱 시작 결과:', result);
 
         if (result.success) {

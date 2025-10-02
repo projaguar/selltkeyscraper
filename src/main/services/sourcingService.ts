@@ -3,6 +3,7 @@
  * 2-depth 구조로 단순화된 플로우
  */
 
+import axios from 'axios';
 import { browserService } from './browserService';
 import { Page } from 'puppeteer';
 
@@ -14,6 +15,7 @@ export interface SourcingConfig {
   includeAuction: boolean;
   includeBest: boolean;
   includeNew: boolean;
+  usernum?: string;
 }
 
 export interface SourcingResult {
@@ -196,7 +198,7 @@ export class SourcingService {
       if (dataResult.success) {
         console.log('[3단계] 클릭 방식 데이터 수집 성공', dataResult);
         // 데이터 전송
-        const res = await this.sendProductDataWithTouching(dataResult.data);
+        const res = await this.sendProductDataWithTouching(keyword, dataResult.data.processedData);
         console.log('[3단계] 클릭 방식 데이터 전송 성공', res);
       }
 
@@ -611,32 +613,40 @@ export class SourcingService {
     }
   }
 
-  private async sendProductDataWithTouching(parsedNextData: {
-    relatedTags: any[];
-    list: any[];
-    uniqueMenuTag: any[];
-  }): Promise<any> {
+  private async sendProductDataWithTouching(
+    keyword: string,
+    processedData: {
+      relatedTags: any[];
+      list: any[];
+      uniqueMenuTag: any[];
+    },
+  ): Promise<any> {
     // return await postGoodsList(data, 'NAVER');
 
     const data = {
-      squery: 검색 키워드,
-      usernum: 유저 번호,
-      spricelimit: 최저 가격,
-      epricelimit: 최고 가격,
+      squery: keyword,
+      usernum: this.currentConfig?.usernum || '',
+      spricelimit: this.currentConfig?.minAmount || '0',
+      epricelimit: this.currentConfig?.maxAmount || '99999999',
       platforms: 'NAVER',
-      bestyn: 베스트상품포함,
-      newyn: 신상품포함,
+      bestyn: this.currentConfig?.includeBest ? 'Y' : 'N',
+      newyn: this.currentConfig?.includeNew ? 'Y' : 'N',
       result: {
-        relatedTags,
-        uniqueMenuTag,
-        list,
+        relatedTags: processedData.relatedTags,
+        uniqueMenuTag: processedData.uniqueMenuTag,
+        list: processedData.list,
       },
     };
 
     const context = {
       isParsed: true,
+      inserturl: 'https://selltkey.com/scb/api/setSearchResult.asp',
     };
-    return parsedNextData;
+
+    const url = 'https://api.opennest.co.kr/restful/v1/selltkey/relay-naver';
+    const res = await axios.post(url, { data, context }).then((res) => res.data);
+    console.log(`[클릭 데이터 수집] 전송 결과: ${JSON.stringify(res)}`);
+    return res;
   }
 
   private async inputKeywordInShoppingTab(page: Page, keyword: string): Promise<SourcingResult> {
@@ -956,10 +966,10 @@ export class SourcingService {
         console.log(`[상품 추출] __NEXT_DATA__에서 ${nextDataResult.productsCount}개 상품 추출 완료`);
 
         // 전체 JSON 구조 로깅 (처음 몇 줄만)
-        const jsonString = JSON.stringify(nextDataResult.data, null, 2);
-        const firstLines = jsonString.split('\n').slice(0, 50).join('\n');
-        console.log('[상품 추출] __NEXT_DATA__ JSON 구조 (첫 50줄):');
-        console.log(firstLines);
+        // const jsonString = JSON.stringify(nextDataResult.data, null, 2);
+        // const firstLines = jsonString.split('\n').slice(0, 50).join('\n');
+        // console.log('[상품 추출] __NEXT_DATA__ JSON 구조 (첫 50줄):');
+        // console.log(firstLines);
 
         // 데이터 가공 처리
         const processedData = this.processNextData(nextDataResult.data);
@@ -1044,8 +1054,13 @@ export class SourcingService {
         { list: [], manuTag: [] },
       );
 
+      console.log('[데이터 가공] list length before:', list.length);
+      console.log('[데이터 가공] list before:', JSON.stringify(list));
+
+      console.log('[데이터 가공] manuTag before:', manuTag.length);
       // 중복 제거
       const uniqueMenuTag = [...new Set(manuTag)];
+      console.log('[데이터 가공] manuTag before:', uniqueMenuTag.length);
 
       const result = {
         relatedTags,
