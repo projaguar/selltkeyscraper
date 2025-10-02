@@ -3,7 +3,9 @@
  * 여러 서비스에서 공통으로 사용하는 브라우저 인스턴스 관리
  */
 
-import puppeteer, { Browser, Page } from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { Browser, Page } from 'puppeteer';
 import { execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -24,6 +26,18 @@ export class BrowserService {
 
   private constructor() {
     // 싱글톤 패턴을 위한 private 생성자
+    // Stealth 플러그인 초기화 (안전한 설정)
+    try {
+      puppeteer.use(
+        StealthPlugin({
+          // 기본 설정만 사용하고 추가 옵션은 비활성화
+          runOnInsecureOrigins: false,
+        }),
+      );
+      console.log('[BrowserService] Stealth 플러그인 초기화 완료');
+    } catch (error) {
+      console.warn('[BrowserService] Stealth 플러그인 초기화 실패, 기본 모드로 실행:', error);
+    }
   }
 
   /**
@@ -142,6 +156,8 @@ export class BrowserService {
           '--disable-blink-features=AutomationControlled', // 자동화 감지 방지
           '--disable-extensions-except', // 확장 프로그램 비활성화
           '--disable-plugins-discovery', // 플러그인 자동 감지 비활성화
+          '--lang=ko-KR', // 한국어 설정
+          '--accept-lang=ko-KR,ko;q=0.9,en;q=0.8', // 언어 우선순위 설정
         ],
         userDataDir: defaultConfig.userDataDir,
         defaultViewport: null, // 기본 뷰포트 설정 비활성화
@@ -208,10 +224,25 @@ export class BrowserService {
     // 빈 탭이 없으면 새로 생성
     const page = await this.browser.newPage();
 
-    // 일반적인 브라우저처럼 보이도록 User-Agent 설정
+    // 한국어 브라우저로 설정
     await page.setUserAgent(
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     );
+
+    // 언어 설정을 한국어로 고정
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+    });
+
+    // 브라우저 언어 설정 강제
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'language', {
+        get: () => 'ko-KR',
+      });
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['ko-KR', 'ko', 'en'],
+      });
+    });
 
     // 뷰포트를 고정하지 않고 브라우저 기본 크기 사용
     await page.setDefaultNavigationTimeout(30000);

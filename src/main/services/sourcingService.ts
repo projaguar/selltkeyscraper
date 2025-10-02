@@ -6,6 +6,8 @@
 import axios from 'axios';
 import { browserService } from './browserService';
 import { Page } from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import AntiDetectionUtils from '../utils/antiDetectionUtils';
 import {
   findAndTypeNaturallyMultiple,
@@ -33,6 +35,11 @@ export interface SourcingResult {
 export class SourcingService {
   private isRunning: boolean = false;
   private currentConfig: SourcingConfig | null = null;
+
+  constructor() {
+    // Stealth 플러그인 초기화
+    puppeteer.use(StealthPlugin());
+  }
 
   // ================================================
   // 메인 플로우 (1st Depth)
@@ -665,7 +672,9 @@ export class SourcingService {
             const compositeList = jsonData?.props?.pageProps?.compositeList?.list;
             return compositeList ? compositeList.length : 0;
           }
-        } catch (e) {}
+        } catch {
+          // 무시
+        }
         return 0;
       });
       console.log(`[클릭 데이터 수집] 새로고침 후 __NEXT_DATA__ compositeList 개수: ${nextDataCount}개`);
@@ -1177,106 +1186,6 @@ export class SourcingService {
   // ================================================
 
   /**
-   * 모든 데이터 로드를 위한 자연스러운 스크롤
-   */
-  private async scrollToLoadAllData(page: Page): Promise<void> {
-    try {
-      console.log('[스크롤] 모든 데이터 로드를 위한 자연스러운 스크롤 시작');
-
-      let previousHeight = 0;
-      let currentHeight = 0;
-      let stableCount = 0; // 높이가 변하지 않는 횟수
-      const maxStableCount = 3; // 3번 연속 높이가 같으면 완료로 간주
-      const maxScrollAttempts = 20; // 최대 스크롤 시도 횟수
-      let scrollAttempts = 0;
-
-      while (scrollAttempts < maxScrollAttempts) {
-        // 현재 페이지 높이 확인
-        currentHeight = await page.evaluate(() => {
-          return Math.max(
-            document.body.scrollHeight,
-            document.body.offsetHeight,
-            document.documentElement.clientHeight,
-            document.documentElement.scrollHeight,
-            document.documentElement.offsetHeight,
-          );
-        });
-
-        console.log(`[스크롤] 시도 ${scrollAttempts + 1}/${maxScrollAttempts}, 현재 높이: ${currentHeight}px`);
-
-        // 높이가 변하지 않았으면 카운트 증가
-        if (currentHeight === previousHeight) {
-          stableCount++;
-          console.log(`[스크롤] 높이 변화 없음 (${stableCount}/${maxStableCount})`);
-        } else {
-          stableCount = 0; // 높이가 변했으면 카운트 리셋
-          console.log(`[스크롤] 높이 변화 감지: ${previousHeight}px → ${currentHeight}px`);
-        }
-
-        // 3번 연속 높이가 같으면 모든 데이터가 로드된 것으로 간주
-        if (stableCount >= maxStableCount) {
-          console.log('[스크롤] 모든 데이터 로드 완료 (높이 변화 없음)');
-          break;
-        }
-
-        // 자연스러운 스크롤 (사람처럼)
-        await this.performNaturalScroll(page);
-
-        // 스크롤 후 잠시 대기 (데이터 로딩 시간)
-        await AntiDetectionUtils.naturalDelay(800, 1500);
-
-        previousHeight = currentHeight;
-        scrollAttempts++;
-      }
-
-      // 최종적으로 페이지 맨 아래로 스크롤
-      console.log('[스크롤] 최종 페이지 맨 아래로 스크롤');
-      await page.evaluate(() => {
-        window.scrollTo({
-          top: document.body.scrollHeight,
-          behavior: 'smooth',
-        });
-      });
-
-      // 최종 대기 (모든 데이터 로딩 완료)
-      await AntiDetectionUtils.naturalDelay(2000, 3000);
-
-      console.log('[스크롤] 모든 데이터 로드를 위한 스크롤 완료');
-    } catch (error) {
-      console.error('[스크롤] 스크롤 중 오류:', error);
-      // 오류가 발생해도 계속 진행
-    }
-  }
-
-  /**
-   * 자연스러운 스크롤 수행
-   */
-  private async performNaturalScroll(page: Page): Promise<void> {
-    try {
-      // 랜덤한 스크롤 거리 (사람의 스크롤 패턴 시뮬레이션)
-      const scrollDistance = Math.floor(Math.random() * 800) + 400; // 400-1200px
-
-      // 현재 스크롤 위치에서 아래로 스크롤
-      await page.evaluate((distance) => {
-        window.scrollBy({
-          top: distance,
-          behavior: 'smooth',
-        });
-      }, scrollDistance);
-
-      // 스크롤 중간에 잠시 멈춤 (사람이 읽는 시간 시뮬레이션)
-      if (Math.random() < 0.3) {
-        // 30% 확률로 멈춤
-        await AntiDetectionUtils.naturalDelay(500, 1200);
-      }
-
-      console.log(`[스크롤] 자연스러운 스크롤: ${scrollDistance}px`);
-    } catch (error) {
-      console.error('[스크롤] 자연스러운 스크롤 오류:', error);
-    }
-  }
-
-  /**
    * 네트워크 모니터링 설정
    */
   private setupNetworkMonitoring(page: Page): { pendingRequests: Set<string>; isIdle: boolean } {
@@ -1425,7 +1334,7 @@ export class SourcingService {
             console.log(`[80개씩 보기] 보기 설정 버튼 발견: ${selector}`);
             break;
           }
-        } catch (e) {
+        } catch {
           continue;
         }
       }
@@ -1451,7 +1360,7 @@ export class SourcingService {
               console.log(`[80개씩 보기] 80개 옵션 발견: ${selector}`);
               break;
             }
-          } catch (e) {
+          } catch {
             continue;
           }
         }
