@@ -138,3 +138,26 @@ jobs:
             dist-macos/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove Source Code Assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+
+          echo "🗑️ 소스코드 자산 삭제 중..."
+
+          # 릴리즈 정보 가져오기
+          RELEASE_DATA=$(gh api repos/${{ github.repository }}/releases/tags/$VERSION)
+          RELEASE_ID=$(echo "$RELEASE_DATA" | jq -r '.id')
+
+          # 소스코드 자산 찾기 및 삭제
+          echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | contains("Source code")) | .id' | while read asset_id; do
+            if [ ! -z "$asset_id" ] && [ "$asset_id" != "null" ]; then
+              echo "삭제 중: Asset ID $asset_id"
+              gh api -X DELETE repos/${{ github.repository }}/releases/assets/$asset_id
+              echo "✅ 소스코드 자산 삭제됨: $asset_id"
+            fi
+          done
+
+          echo "🎉 소스코드 제거 완료!"
