@@ -120,51 +120,21 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Create Release with GitHub API
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            자동 생성된 릴리즈입니다.
+
+            ## 다운로드
+            - **Windows**: selltkeyscraper-${{ steps.get_version.outputs.VERSION }}-setup.exe
+            - **macOS**: selltkeyscraper-${{ steps.get_version.outputs.VERSION }}.dmg
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          files: |
+            dist-windows/*.exe
+            dist-macos/*.dmg
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
-
-          # GitHub API로 릴리즈 생성 (소스코드 자동 첨부 없음)
-          echo "📦 GitHub API로 릴리즈 생성 중..."
-          RELEASE_RESPONSE=$(gh api repos/${{ github.repository }}/releases \
-            --method POST \
-            --field tag_name="$VERSION" \
-            --field name="Release $VERSION" \
-            --field body="자동 생성된 릴리즈입니다." \
-            --field draft=false \
-            --field prerelease=false)
-
-          RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
-          echo "✅ 릴리즈 생성됨: ID $RELEASE_ID"
-
-          # Windows 실행 파일 업로드
-          echo "📤 Windows 실행 파일 업로드 중..."
-          for file in dist-windows/*.exe; do
-            if [ -f "$file" ]; then
-              UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets"
-              curl -X POST \
-                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                -H "Content-Type: application/octet-stream" \
-                --data-binary @"$file" \
-                "$UPLOAD_URL?name=$(basename "$file")&label=Windows%20Installer"
-              echo "✅ 업로드 완료: $(basename "$file")"
-            fi
-          done
-
-          # macOS 실행 파일 업로드
-          echo "📤 macOS 실행 파일 업로드 중..."
-          for file in dist-macos/*.dmg; do
-            if [ -f "$file" ]; then
-              UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets"
-              curl -X POST \
-                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                -H "Content-Type: application/octet-stream" \
-                --data-binary @"$file" \
-                "$UPLOAD_URL?name=$(basename "$file")&label=macOS%20Installer"
-              echo "✅ 업로드 완료: $(basename "$file")"
-            fi
-          done
-
-          echo "🎉 릴리즈 생성 완료: $VERSION (소스코드 제외)"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
