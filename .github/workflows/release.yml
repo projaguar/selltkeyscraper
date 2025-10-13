@@ -63,7 +63,16 @@ jobs:
 
       - name: Package (macOS)
         if: matrix.os == 'macos-latest'
-        run: bunx electron-builder --mac --publish never
+        run: |
+          # 코드 서명 완전 비활성화
+          export CSC_IDENTITY_AUTO_DISCOVERY=false
+          export CSC_LINK=""
+          export CSC_KEY_PASSWORD=""
+          export APPLE_ID=""
+          export APPLE_PASSWORD=""
+          export APPLE_TEAM_ID=""
+
+          bunx electron-builder --mac --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -117,14 +126,26 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
 
-          # 릴리즈 생성 (소스코드 제외)
+          # 릴리즈 생성 (소스코드 완전 제외)
           gh release create "$VERSION" \
             --title "Release $VERSION" \
             --notes "자동 생성된 릴리즈입니다." \
-            --repo ${{ github.repository }}
+            --repo ${{ github.repository }} \
+            --verify-tag=false
 
           # 실행 파일만 업로드
           gh release upload "$VERSION" dist-windows/*.exe --repo ${{ github.repository }} || true
           gh release upload "$VERSION" dist-macos/*.dmg --repo ${{ github.repository }} || true
 
-          echo "✅ 릴리즈 생성 완료: $VERSION"
+          # 소스코드 자산 삭제 (GitHub API 사용)
+          echo "🗑️ 소스코드 자산 삭제 중..."
+          gh api repos/${{ github.repository }}/releases/tags/$VERSION \
+            --jq '.assets[] | select(.name | contains("Source code")) | .id' | \
+          while read asset_id; do
+            if [ ! -z "$asset_id" ]; then
+              gh api -X DELETE repos/${{ github.repository }}/releases/assets/$asset_id
+              echo "✅ 소스코드 자산 삭제됨: $asset_id"
+            fi
+          done
+
+          echo "✅ 릴리즈 생성 완료: $VERSION (소스코드 제외)"
