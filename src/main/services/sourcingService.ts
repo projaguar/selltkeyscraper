@@ -132,14 +132,22 @@ export class SourcingService {
 
         // NOTICE: 지우면 안됨 임시로 막은것임
         // 데이터 수집 - 네이버 (블럭되어도 fetch 소싱은 가능)
-        // const naverResult = await this.collectProductDataWithFetch(newPage, keyword);
-        // if (!naverResult.success) return naverResult;
-        // console.log('[소싱] 네이버 데이터 수집 결과', JSON.stringify(naverResult.data));
-        // await this.sendProductData(keyword, naverResult.data.products);
+        if (config.includeNaver) {
+          const naverResult = await this.collectProductDataWithFetch(newPage, keyword);
+          // TODO: return 하면 안되고.. 다른 처리 하도록... 고민할것
+          if (!naverResult.success) return naverResult;
+          console.log('[소싱] 네이버 데이터 수집 결과', JSON.stringify(naverResult.data));
+          await this.sendNaverProductData(keyword, naverResult.data.products);
+        }
 
-        // 데이터 수집 - 옥션
-        const auctionResult = await this.collectAuctionProductData(newPage, keyword);
-        console.log('[소싱] 옥션 데이터 수집 결과', JSON.stringify(auctionResult.data));
+        // 데이터 수집 - 옥션 (옵션 체크시에만)
+        if (config.includeAuction) {
+          const auctionResult = await this.collectAuctionProductData(newPage, keyword);
+          // TODO: return 하면 안되고.. 다른 처리 하도록... 고민할것
+          if (!auctionResult.success) return auctionResult;
+          console.log('[소싱] 네이버 데이터 수집 결과', JSON.stringify(auctionResult.data));
+          await this.sendAudtionProductData(auctionResult.data);
+        }
 
         await AntiDetectionUtils.naturalDelay(1000, 2800);
       }
@@ -1001,7 +1009,7 @@ export class SourcingService {
    * @param keyword 검색 키워드
    * @param products 상품 목록 [{ mallName, mallPcUrl, ... }]
    */
-  private async sendProductData(
+  private async sendNaverProductData(
     keyword: string,
     products: Array<{ mallName: string; mallPcUrl: string }>,
   ): Promise<any> {
