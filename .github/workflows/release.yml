@@ -142,9 +142,10 @@ jobs:
       - name: Delete Source Code Assets
         uses: mknejp/delete-release-assets@v1
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.get_version.outputs.VERSION }}
-          assets: 'Source code (zip), Source code (tar.gz)'
+          assets: |
+            Source code (zip)
+            Source code (tar.gz)
           fail-if-no-release: false
           fail-if-no-assets: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
