@@ -146,9 +146,9 @@ jobs:
           RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
           echo "✅ 릴리즈 생성됨: ID $RELEASE_ID"
 
-          # 잠시 대기 (소스코드 자동 첨부 완료 대기)
-          echo "⏳ 소스코드 자동 첨부 대기 중..."
-          sleep 10
+          # 잠시 대기 (릴리즈 안정화)
+          echo "⏳ 릴리즈 안정화 대기 중..."
+          sleep 5
 
           # 자산 목록 가져오기
           ASSETS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
