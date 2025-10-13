@@ -37,10 +37,25 @@ export interface SourcingResult {
 export class SourcingService {
   private isRunning: boolean = false;
   private currentConfig: SourcingConfig | null = null;
+  private currentKeyword: string = '';
+  private totalKeywords: number = 0;
+  private currentKeywordIndex: number = 0;
+  private logs: string[] = [];
 
   constructor() {
     // Stealth 플러그인 초기화
     puppeteer.use(StealthPlugin());
+  }
+
+  private addLog(message: string): void {
+    const timestamp = new Date().toLocaleTimeString('ko-KR');
+    const logMessage = `[${timestamp}] ${message}`;
+    this.logs.push(logMessage);
+    console.log(logMessage);
+    // 최대 100개의 로그만 유지
+    if (this.logs.length > 100) {
+      this.logs.shift();
+    }
   }
 
   // ================================================
@@ -58,12 +73,13 @@ export class SourcingService {
 
       this.isRunning = true;
       this.currentConfig = config;
-      console.log('[소싱] 전체 프로세스 시작');
+      this.logs = []; // 로그 초기화
+      this.addLog('소싱 프로세스 시작');
 
       // ========================================
       // 1단계: 브라우저 초기화 및 정리
       // ========================================
-      console.log('[소싱] 브라우저 초기화 시작');
+      this.addLog('브라우저 초기화 중...');
 
       // 브라우저 준비 (로그인 체크 제외)
       const browserResult = await this.prepareBrowserWithoutLoginCheck();
@@ -84,6 +100,9 @@ export class SourcingService {
       if (keywords.length === 0) {
         return { success: false, message: '검색할 키워드가 없습니다.' };
       }
+
+      this.totalKeywords = keywords.length;
+      this.addLog(`총 ${keywords.length}개의 키워드 처리 예정`);
 
       // ========================================
       // 3단계: 첫 번째 키워드로 메인 페이지에서 검색
@@ -110,11 +129,25 @@ export class SourcingService {
 
       let isFirst = true;
 
-      for (const keyword of keywords) {
+      for (let i = 0; i < keywords.length; i++) {
+        const keyword = keywords[i];
+        this.currentKeyword = keyword;
+        this.currentKeywordIndex = i + 1;
+
+        this.addLog(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        this.addLog(`키워드 [${i + 1}/${keywords.length}]: "${keyword}"`);
+        this.addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+        // 중지 요청 확인
+        if (!this.isRunning) {
+          this.addLog('사용자에 의해 소싱 중지됨');
+          return { success: true, message: '소싱이 사용자에 의해 중지되었습니다.' };
+        }
+
         // check block screen (블럭되어도 fetch 소싱은 가능)
         const isBlockedPage = await this.isBlocked(newPage);
         if (isBlockedPage) {
-          console.warn(`[소싱] 블럭 페이지 감지 - 키워드 "${keyword}" (fetch 소싱 계속 진행)`);
+          this.addLog(`⚠️ 블럭 페이지 감지 (fetch 소싱 계속 진행)`);
         }
 
         // 블럭되지 않았고 첫 페이지가 아니면 검색 수행
@@ -154,30 +187,38 @@ export class SourcingService {
         // NOTICE: 지우면 안됨 임시로 막은것임
         // 데이터 수집 - 네이버 (블럭되어도 fetch 소싱은 가능)
         if (config.includeNaver) {
+          this.addLog('📦 네이버 데이터 수집 시작...');
           const naverResult = await this.collectNaverProductData(newPage, keyword);
           if (!naverResult.success) {
-            console.warn(`[소싱] 네이버 데이터 수집 실패 - 키워드 "${keyword}": ${naverResult.message}`);
-            // 네이버 수집 실패해도 계속 진행
+            this.addLog(`❌ 네이버 데이터 수집 실패: ${naverResult.message}`);
           } else {
+            const itemCount = naverResult.data?.result?.list?.length || 0;
+            this.addLog(`✅ 네이버 데이터 수집 완료: ${itemCount}개 상품`);
             try {
+              this.addLog('📤 네이버 데이터 서버 전송 중...');
               await this.sendNaverProductData(naverResult.data);
+              this.addLog('✅ 네이버 데이터 서버 전송 완료');
             } catch (error) {
-              console.warn(`[소싱] 네이버 데이터 전송 실패 - 키워드 "${keyword}":`, error);
+              this.addLog(`❌ 네이버 데이터 전송 실패: ${error}`);
             }
           }
         }
 
         // 데이터 수집 - 옥션 (옵션 체크시에만)
         if (config.includeAuction) {
+          this.addLog('📦 옥션 데이터 수집 시작...');
           const auctionResult = await this.collectAuctionProductData(newPage, keyword);
           if (!auctionResult.success) {
-            console.warn(`[소싱] 옥션 데이터 수집 실패 - 키워드 "${keyword}": ${auctionResult.message}`);
-            // 옥션 수집 실패해도 계속 진행
+            this.addLog(`❌ 옥션 데이터 수집 실패: ${auctionResult.message}`);
           } else {
+            const itemCount = auctionResult.data?.result?.list?.length || 0;
+            this.addLog(`✅ 옥션 데이터 수집 완료: ${itemCount}개 상품`);
             try {
+              this.addLog('📤 옥션 데이터 서버 전송 중...');
               await this.sendAuctionProductData(auctionResult.data);
+              this.addLog('✅ 옥션 데이터 서버 전송 완료');
             } catch (error) {
-              console.warn(`[소싱] 옥션 데이터 전송 실패 - 키워드 "${keyword}":`, error);
+              this.addLog(`❌ 옥션 데이터 전송 실패: ${error}`);
             }
           }
         }
@@ -186,7 +227,8 @@ export class SourcingService {
       }
 
       this.isRunning = false;
-      console.log('[소싱] 전체 소싱 프로세스 완료');
+      this.addLog('\n🎉 전체 소싱 프로세스 완료!');
+      this.addLog(`총 ${keywords.length}개 키워드 처리 완료`);
       return { success: true, message: '전체 소싱 프로세스 완료' };
     } catch (error) {
       console.error('[소싱] 전체 프로세스 오류:', error);
@@ -216,6 +258,10 @@ export class SourcingService {
       config: this.currentConfig,
       progress: this.isRunning ? '소싱 진행 중...' : '대기 중',
       status: this.isRunning ? 'running' : 'idle',
+      currentKeyword: this.currentKeyword,
+      currentKeywordIndex: this.currentKeywordIndex,
+      totalKeywords: this.totalKeywords,
+      logs: this.logs,
     };
   }
 

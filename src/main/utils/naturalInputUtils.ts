@@ -357,25 +357,10 @@ export async function executeSearchNaturally(
       await page.keyboard.press('Enter');
     }
 
-    // 검색 결과 로딩 대기 (네트워크 통신 완료 감지)
-    console.log('[NaturalSearch] 네트워크 통신 완료 대기 중...');
-    try {
-      await page.waitForNetworkIdle({
-        idleTime: 1000, // 1초 동안 네트워크 요청이 2개 이하면 완료로 간주
-        timeout: 5000, // 최대 5초 대기 (더 빠르게)
-      });
-      console.log('[NaturalSearch] 네트워크 통신 완료');
-
-      // 네트워크 완료 후 짧은 추가 대기 (100~300ms)
-      const finalDelay = getRandomDelay(100, 300);
-      console.log(`[NaturalSearch] 최종 대기: ${finalDelay}ms`);
-      await new Promise((resolve) => setTimeout(resolve, finalDelay));
-    } catch (error) {
-      // 타임아웃 시에도 최소 대기 시간 보장 (1~2초)
-      console.log('[NaturalSearch] 네트워크 대기 타임아웃, 최소 대기 시간 적용');
-      const minDelay = getRandomDelay(1000, 2000);
-      await new Promise((resolve) => setTimeout(resolve, minDelay));
-    }
+    // 검색 결과 로딩 대기 (랜덤 딜레이)
+    const randomDelay = getRandomDelay(300, 1200);
+    console.log(`[NaturalSearch] 검색 결과 로딩 대기: ${randomDelay}ms`);
+    await new Promise((resolve) => setTimeout(resolve, randomDelay));
 
     console.log('[NaturalSearch] 자연스러운 검색 실행 완료');
     return true;

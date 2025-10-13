@@ -64,6 +64,11 @@ interface Api {
     isRunning: boolean;
     config: SourcingConfig | null;
     progress: string;
+    status: string;
+    currentKeyword: string;
+    currentKeywordIndex: number;
+    totalKeywords: number;
+    logs: string[];
   }>;
 }
 
