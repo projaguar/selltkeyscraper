@@ -35,23 +35,22 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: bun install
 
-      - name: Build application (Windows)
+      - name: Build and Package (Windows)
         if: matrix.os == 'windows-latest'
-        run: npm run build
-
-      - name: Build application (macOS)
-        if: matrix.os == 'macos-latest'
-        run: bun run build
-
-      - name: Build Windows executable
-        if: matrix.os == 'windows-latest'
-        run: npx electron-builder --win --x64 --publish never
+        run: |
+          npx tsc --noEmit -p tsconfig.node.json --composite false
+          npx tsc --noEmit -p tsconfig.web.json --composite false
+          npx electron-vite build
+          npx electron-builder --win --x64 --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build macOS executable
+      - name: Build and Package (macOS)
         if: matrix.os == 'macos-latest'
-        run: bunx electron-builder --mac --publish never
+        run: |
+          bun run typecheck
+          bunx electron-vite build
+          bunx electron-builder --mac --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
