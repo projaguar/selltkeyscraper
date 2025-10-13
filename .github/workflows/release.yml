@@ -35,13 +35,13 @@ jobs:
 
       - name: Build Windows executable
         if: matrix.os == 'windows-latest'
-        run: bun run build && electron-builder --win --x64 --publish never
+        run: bun run build && bunx electron-builder --win --x64 --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build macOS executable
         if: matrix.os == 'macos-latest'
-        run: bun run build && electron-builder --mac --publish never
+        run: bun run build && bunx electron-builder --mac --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

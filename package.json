@@ -1,6 +1,6 @@
 {
   "name": "selltkeyscraper",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "An Electron application with React and TypeScript",
   "main": "./out/main/index.js",
   "author": "example.com",
@@ -20,6 +20,7 @@
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
     "release": "bash scripts/release.sh",
+    "delete-tag": "bash scripts/delete-tag.sh",
     "mcp:puppeteer": "npx @modelcontextprotocol/server-puppeteer"
   },
   "dependencies": {
