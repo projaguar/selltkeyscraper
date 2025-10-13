@@ -147,7 +147,7 @@ jobs:
                 --method POST \
                 --field name="$(basename "$file")" \
                 --field label="Windows Installer" \
-                --data-binary @"$file" \
+                --input "$file" \
                 --header "Content-Type: application/octet-stream"
               echo "✅ 업로드 완료: $(basename "$file")"
             fi
@@ -161,7 +161,7 @@ jobs:
                 --method POST \
                 --field name="$(basename "$file")" \
                 --field label="macOS Installer" \
-                --data-binary @"$file" \
+                --input "$file" \
                 --header "Content-Type: application/octet-stream"
               echo "✅ 업로드 완료: $(basename "$file")"
             fi
