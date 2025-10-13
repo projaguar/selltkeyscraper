@@ -111,16 +111,20 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: Release ${{ steps.get_version.outputs.VERSION }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          includeSource: false
-          files: |
-            dist-windows/*.exe
-            dist-macos/*.dmg
+      - name: Create Release with GitHub CLI
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+
+          # 릴리즈 생성 (소스코드 제외)
+          gh release create "$VERSION" \
+            --title "Release $VERSION" \
+            --notes "자동 생성된 릴리즈입니다." \
+            --repo ${{ github.repository }}
+
+          # 실행 파일만 업로드
+          gh release upload "$VERSION" dist-windows/*.exe --repo ${{ github.repository }} || true
+          gh release upload "$VERSION" dist-macos/*.dmg --repo ${{ github.repository }} || true
+
+          echo "✅ 릴리즈 생성 완료: $VERSION"
