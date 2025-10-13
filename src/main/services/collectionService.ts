@@ -92,39 +92,36 @@ export class CollectionService {
       console.log(`[CollectionService] 상품목록 조회 후 진행상황:`, this.getProgress());
 
       // ========================================
-      // 3단계: 기존 브라우저 재사용
+      // 3단계: 브라우저 준비 및 초기화
       // ========================================
-      // BrowserService에서 기존 브라우저 인스턴스 가져오기
-      if (!browserService.isBrowserReady()) {
-        throw new Error('브라우저가 준비되지 않았습니다. 먼저 네이버 로그인을 완료해주세요.');
+      this.progress.status = '브라우저 준비 중...';
+      console.log('[CollectionService] 브라우저 준비 시작');
+
+      const prepareResult = await browserService.prepareForService();
+      if (!prepareResult.success) {
+        throw new Error(prepareResult.message);
       }
 
-      // 기존 페이지 재사용 또는 새 페이지 생성
-      let page;
-      if (browserService.isCurrentPageValid()) {
-        // 기존 페이지가 유효하면 재사용
-        page = browserService.getCurrentPage();
-        console.log(`[CollectionService] 기존 페이지 재사용: ${page?.url()}`);
-      } else {
-        // 기존 페이지가 없거나 유효하지 않으면 새로 생성
-        page = await browserService.createPage();
-        browserService.setCurrentPage(page);
-        console.log(`[CollectionService] 새 페이지 생성: ${page.url()}`);
-      }
+      // 작업 데이터 클리어
+      this.progress.status = '작업 데이터 초기화 중...';
+      console.log('[CollectionService] 작업 데이터 클리어 시작');
 
-      // 네이버 로그인 상태 확인 (이미 로그인되어 있어야 함)
-      this.progress.status = '네이버 로그인 상태 확인 중...';
-      const isNaverLoggedIn = await browserService.checkNaverLoginStatus();
-      if (!isNaverLoggedIn) {
-        throw new Error('네이버 로그인이 필요합니다. 먼저 네이버에 로그인해주세요.');
-      }
-      this.progress.status = '네이버 로그인 상태 확인 완료';
-      console.log('[CollectionService] 네이버 로그인 상태 확인 완료');
+      // 진행상황 초기화 (total은 유지)
+      const totalCount = this.progress.total;
+      this.progress = {
+        current: 0,
+        total: totalCount,
+        currentStore: '',
+        status: '작업 준비 완료',
+      };
+
+      console.log('[CollectionService] 작업 데이터 클리어 완료');
 
       // ========================================
       // 4단계: 상품별 수집 처리 루프
       // ========================================
       const insertUrl = res.inserturl;
+      const page = browserService.getCurrentPage();
 
       // 상품 수집 시작
       this.progress.status = '상품 수집 시작';

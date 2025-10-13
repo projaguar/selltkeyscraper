@@ -127,6 +127,31 @@ const MainPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [isCollecting]);
 
+  // 소싱 상태 실시간 업데이트
+  useEffect(() => {
+    console.log('소싱 상태 useEffect 실행, isSourcing:', isSourcing);
+    if (!isSourcing) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const sourcingProgress = await window.api.getSourcingProgress();
+        console.log('소싱 진행상황 데이터 받음:', sourcingProgress);
+
+        // 소싱이 완료되었으면 UI 상태 업데이트
+        if (!sourcingProgress.isRunning && isSourcing) {
+          console.log('소싱 완료 감지, UI 상태 업데이트');
+          setIsSourcing(false);
+          // 키워드 필드 클리어
+          setSourcingConfig((prev) => ({ ...prev, keywords: '' }));
+        }
+      } catch (error) {
+        console.error('소싱 진행상황 업데이트 오류:', error);
+      }
+    }, 1000); // 1초마다 체크
+
+    return () => clearInterval(interval);
+  }, [isSourcing]);
+
   // 소싱 시작/중지 핸들러
   const handleSourcingToggle = async (): Promise<void> => {
     try {

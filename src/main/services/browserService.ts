@@ -520,6 +520,81 @@ export class BrowserService {
   isBrowserReady(): boolean {
     return this.isInitialized && this.browser !== null;
   }
+
+  /**
+   * 서비스 시작 전 브라우저 준비 (탭 정리, URL 이동, 로그인 체크)
+   * @returns 준비 결과
+   */
+  async prepareForService(): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log('[BrowserService] 서비스 준비 시작');
+
+      if (!this.isBrowserReady()) {
+        return { success: false, message: '브라우저가 준비되지 않았습니다.' };
+      }
+
+      // 1. 브라우저 탭 정리
+      const browser = this.getBrowser();
+      const pages = await browser!.pages();
+      console.log(`[BrowserService] 현재 열린 탭 개수: ${pages.length}개`);
+
+      let currentPage;
+      if (pages.length >= 2) {
+        // 2개 이상이면 첫 번째 탭으로 전환하고 나머지 탭 닫기
+        currentPage = pages[0];
+        await currentPage.bringToFront();
+        this.setCurrentPage(currentPage);
+        console.log(`[BrowserService] 첫 번째 탭으로 전환: ${currentPage.url()}`);
+
+        // 나머지 탭들 닫기
+        for (let i = 1; i < pages.length; i++) {
+          try {
+            await pages[i].close();
+            console.log(`[BrowserService] 탭 ${i + 1} 닫기 완료`);
+          } catch (error) {
+            console.warn(`[BrowserService] 탭 ${i + 1} 닫기 실패:`, error);
+          }
+        }
+      } else if (pages.length === 1) {
+        // 1개면 그대로 사용
+        currentPage = pages[0];
+        this.setCurrentPage(currentPage);
+        console.log(`[BrowserService] 기존 페이지 사용: ${currentPage.url()}`);
+      } else {
+        return { success: false, message: '사용 가능한 페이지가 없습니다.' };
+      }
+
+      // 2. www.naver.com으로 이동
+      const currentUrl = currentPage.url();
+      console.log(`[BrowserService] 현재 URL: ${currentUrl}`);
+
+      if (!currentUrl.startsWith('https://www.naver.com')) {
+        console.log('[BrowserService] www.naver.com으로 이동');
+        await currentPage.goto('https://www.naver.com', {
+          waitUntil: 'domcontentloaded',
+          timeout: 30000,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        console.log('[BrowserService] www.naver.com 이동 완료');
+      } else {
+        console.log('[BrowserService] 이미 www.naver.com에 있음');
+      }
+
+      // 3. 네이버 로그인 상태 확인
+      console.log('[BrowserService] 네이버 로그인 상태 확인');
+      const isNaverLoggedIn = await this.checkNaverLoginStatus();
+      if (!isNaverLoggedIn) {
+        return { success: false, message: '네이버 로그인이 필요합니다. 먼저 네이버에 로그인해주세요.' };
+      }
+      console.log('[BrowserService] 네이버 로그인 상태 확인 완료');
+
+      console.log('[BrowserService] 서비스 준비 완료');
+      return { success: true, message: '서비스 준비 완료' };
+    } catch (error) {
+      console.error('[BrowserService] 서비스 준비 오류:', error);
+      return { success: false, message: '서비스 준비 중 오류 발생' };
+    }
+  }
 }
 
 // 싱글톤 인스턴스 export
