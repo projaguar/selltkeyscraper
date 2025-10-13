@@ -140,12 +140,35 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Delete Source Code Assets
-        uses: mknejp/delete-release-assets@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ steps.get_version.outputs.VERSION }}
-          assets: |
-            Source code (zip)
-            Source code (tar.gz)
-          fail-if-no-release: false
-          fail-if-no-assets: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+
+          echo "🗑️ 소스코드 자산 삭제 중..."
+
+          # 릴리즈 정보 가져오기
+          RELEASE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$VERSION")
+
+          RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
+          echo "릴리즈 ID: $RELEASE_ID"
+
+          # 자산 목록 가져오기
+          ASSETS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets")
+
+          echo "자산 목록:"
+          echo "$ASSETS_RESPONSE" | jq -r '.[].name'
+
+          # 소스코드 자산 삭제
+          echo "$ASSETS_RESPONSE" | jq -r '.[] | select(.name | contains("Source code")) | .id' | while read asset_id; do
+            if [ ! -z "$asset_id" ] && [ "$asset_id" != "null" ]; then
+              echo "삭제 중: Asset ID $asset_id"
+              curl -X DELETE -H "Authorization: token $GITHUB_TOKEN" \
+                "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id"
+              echo "✅ 소스코드 자산 삭제됨: $asset_id"
+            fi
+          done
+
+          echo "🎉 소스코드 제거 완료!"
