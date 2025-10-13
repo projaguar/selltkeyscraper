@@ -27,20 +27,17 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun install
-
-      - name: Install native bindings (Windows)
+      - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          npm install @rollup/rollup-win32-x64-msvc --no-save
-          npm install lightningcss-win32-x64-msvc --no-save
+          npm install
+          npm install @rollup/rollup-win32-x64-msvc lightningcss-win32-x64-msvc --no-save
 
-      - name: Install native bindings (macOS ARM64)
+      - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          npm install @rollup/rollup-darwin-arm64 --no-save
-          npm install lightningcss-darwin-arm64 --no-save
+          bun install
+          npm install @rollup/rollup-darwin-arm64 lightningcss-darwin-arm64 --no-save
 
       - name: Build application
         run: bun run build
