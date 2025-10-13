@@ -120,32 +120,51 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Create Release with GitHub CLI
+      - name: Create Release with GitHub API
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
 
-          # 릴리즈 생성 (소스코드 완전 제외)
-          gh release create "$VERSION" \
-            --title "Release $VERSION" \
-            --notes "자동 생성된 릴리즈입니다." \
-            --repo ${{ github.repository }} \
-            --verify-tag=false
+          # GitHub API로 릴리즈 생성 (소스코드 자동 첨부 없음)
+          echo "📦 GitHub API로 릴리즈 생성 중..."
+          RELEASE_RESPONSE=$(gh api repos/${{ github.repository }}/releases \
+            --method POST \
+            --field tag_name="$VERSION" \
+            --field name="Release $VERSION" \
+            --field body="자동 생성된 릴리즈입니다." \
+            --field draft=false \
+            --field prerelease=false)
 
-          # 실행 파일만 업로드
-          gh release upload "$VERSION" dist-windows/*.exe --repo ${{ github.repository }} || true
-          gh release upload "$VERSION" dist-macos/*.dmg --repo ${{ github.repository }} || true
+          RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
+          echo "✅ 릴리즈 생성됨: ID $RELEASE_ID"
 
-          # 소스코드 자산 삭제 (GitHub API 사용)
-          echo "🗑️ 소스코드 자산 삭제 중..."
-          gh api repos/${{ github.repository }}/releases/tags/$VERSION \
-            --jq '.assets[] | select(.name | contains("Source code")) | .id' | \
-          while read asset_id; do
-            if [ ! -z "$asset_id" ]; then
-              gh api -X DELETE repos/${{ github.repository }}/releases/assets/$asset_id
-              echo "✅ 소스코드 자산 삭제됨: $asset_id"
+          # Windows 실행 파일 업로드
+          echo "📤 Windows 실행 파일 업로드 중..."
+          for file in dist-windows/*.exe; do
+            if [ -f "$file" ]; then
+              gh api repos/${{ github.repository }}/releases/$RELEASE_ID/assets \
+                --method POST \
+                --field name="$(basename "$file")" \
+                --field label="Windows Installer" \
+                --data-binary @"$file" \
+                --header "Content-Type: application/octet-stream"
+              echo "✅ 업로드 완료: $(basename "$file")"
             fi
           done
 
-          echo "✅ 릴리즈 생성 완료: $VERSION (소스코드 제외)"
+          # macOS 실행 파일 업로드
+          echo "📤 macOS 실행 파일 업로드 중..."
+          for file in dist-macos/*.dmg; do
+            if [ -f "$file" ]; then
+              gh api repos/${{ github.repository }}/releases/$RELEASE_ID/assets \
+                --method POST \
+                --field name="$(basename "$file")" \
+                --field label="macOS Installer" \
+                --data-binary @"$file" \
+                --header "Content-Type: application/octet-stream"
+              echo "✅ 업로드 완료: $(basename "$file")"
+            fi
+          done
+
+          echo "🎉 릴리즈 생성 완료: $VERSION (소스코드 제외)"
