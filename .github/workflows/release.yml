@@ -120,55 +120,54 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: Release ${{ steps.get_version.outputs.VERSION }}
-          body: |
-            자동 생성된 릴리즈입니다.
-
-            ## 다운로드
-            - **Windows**: selltkeyscraper-${{ steps.get_version.outputs.VERSION }}-setup.exe
-            - **macOS**: selltkeyscraper-${{ steps.get_version.outputs.VERSION }}.dmg
-          draft: false
-          prerelease: false
-          generate_release_notes: false
-          files: |
-            dist-windows/*.exe
-            dist-macos/*.dmg
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Delete Source Code Assets
+      - name: Create Release (No Source Code)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
 
-          echo "🗑️ 소스코드 자산 삭제 중..."
+          echo "📦 릴리즈 생성 중 (소스코드 제외)..."
 
-          # 릴리즈 정보 가져오기
-          RELEASE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$VERSION")
+          # GitHub API로 릴리즈 생성 (소스코드 자동 첨부 없음)
+          RELEASE_RESPONSE=$(curl -s -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" \
+            -d "{
+              \"tag_name\": \"$VERSION\",
+              \"name\": \"Release $VERSION\",
+              \"body\": \"자동 생성된 릴리즈입니다.\\n\\n## 다운로드\\n- **Windows**: selltkeyscraper-$VERSION-setup.exe\\n- **macOS**: selltkeyscraper-$VERSION.dmg\",
+              \"draft\": false,
+              \"prerelease\": false
+            }")
 
           RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
-          echo "릴리즈 ID: $RELEASE_ID"
+          echo "✅ 릴리즈 생성됨: ID $RELEASE_ID"
 
-          # 자산 목록 가져오기
-          ASSETS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets")
-
-          echo "자산 목록:"
-          echo "$ASSETS_RESPONSE" | jq -r '.[].name'
-
-          # 소스코드 자산 삭제
-          echo "$ASSETS_RESPONSE" | jq -r '.[] | select(.name | contains("Source code")) | .id' | while read asset_id; do
-            if [ ! -z "$asset_id" ] && [ "$asset_id" != "null" ]; then
-              echo "삭제 중: Asset ID $asset_id"
-              curl -X DELETE -H "Authorization: token $GITHUB_TOKEN" \
-                "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id"
-              echo "✅ 소스코드 자산 삭제됨: $asset_id"
+          # Windows 실행 파일 업로드
+          echo "📤 Windows 실행 파일 업로드 중..."
+          for file in dist-windows/*.exe; do
+            if [ -f "$file" ]; then
+              curl -X POST \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Content-Type: application/octet-stream" \
+                --data-binary @"$file" \
+                "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=$(basename "$file")&label=Windows%20Installer"
+              echo "✅ Windows 파일 업로드 완료: $(basename "$file")"
             fi
           done
 
-          echo "🎉 소스코드 제거 완료!"
+          # macOS 실행 파일 업로드
+          echo "📤 macOS 실행 파일 업로드 중..."
+          for file in dist-macos/*.dmg; do
+            if [ -f "$file" ]; then
+              curl -X POST \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Content-Type: application/octet-stream" \
+                --data-binary @"$file" \
+                "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=$(basename "$file")&label=macOS%20Installer"
+              echo "✅ macOS 파일 업로드 완료: $(basename "$file")"
+            fi
+          done
+
+          echo "🎉 릴리즈 생성 완료: $VERSION (소스코드 제외)"
