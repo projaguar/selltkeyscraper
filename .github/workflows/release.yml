@@ -143,12 +143,12 @@ jobs:
           echo "📤 Windows 실행 파일 업로드 중..."
           for file in dist-windows/*.exe; do
             if [ -f "$file" ]; then
-              gh api repos/${{ github.repository }}/releases/$RELEASE_ID/assets \
-                --method POST \
-                --field name="$(basename "$file")" \
-                --field label="Windows Installer" \
-                --input "$file" \
-                --header "Content-Type: application/octet-stream"
+              UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets"
+              curl -X POST \
+                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Content-Type: application/octet-stream" \
+                --data-binary @"$file" \
+                "$UPLOAD_URL?name=$(basename "$file")&label=Windows%20Installer"
               echo "✅ 업로드 완료: $(basename "$file")"
             fi
           done
@@ -157,12 +157,12 @@ jobs:
           echo "📤 macOS 실행 파일 업로드 중..."
           for file in dist-macos/*.dmg; do
             if [ -f "$file" ]; then
-              gh api repos/${{ github.repository }}/releases/$RELEASE_ID/assets \
-                --method POST \
-                --field name="$(basename "$file")" \
-                --field label="macOS Installer" \
-                --input "$file" \
-                --header "Content-Type: application/octet-stream"
+              UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets"
+              curl -X POST \
+                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Content-Type: application/octet-stream" \
+                --data-binary @"$file" \
+                "$UPLOAD_URL?name=$(basename "$file")&label=macOS%20Installer"
               echo "✅ 업로드 완료: $(basename "$file")"
             fi
           done
