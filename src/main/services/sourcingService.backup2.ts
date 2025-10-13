@@ -4,8 +4,6 @@
  */
 
 import axios from 'axios';
-import { app } from 'electron';
-import * as path from 'path';
 import { browserService } from './browserService';
 import { Page } from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
@@ -77,74 +75,137 @@ export class SourcingService {
       console.log('[소싱] 첫 번째 키워드로 메인 페이지에서 검색', '종료');
       if (!searchResult.success) return searchResult;
 
-      // 2. 쇼핑 탭 클릭하여 새 탭 열기
-      console.log('[소싱] 쇼핑 탭 클릭하여 새 탭 열기', '시작');
-      const shoppingTabResult = await this.step2_ClickShoppingTab(browserService.getCurrentPage());
-      console.log('[소싱] 쇼핑 탭 클릭하여 새 탭 열기', '종료');
-      if (!shoppingTabResult.success) return shoppingTabResult;
+      const _keyword = encodeURIComponent(firstKeyword);
+      const queryUrl = `https://search.shopping.naver.com/search/all?where=all&frm=NVSCTAB&query=${_keyword}`;
 
-      // 3. 새 탭에서 데이터 수집
-      const newPage = await this.switchToNewTab();
-      if (!newPage) return { success: false, message: '새 탭으로 전환 실패' };
+      //
+      // 테스트: 실제 네이버 쇼핑 탭 a 태그를 그대로 추가
+      //
+      console.log('[소싱] 네이버 쇼핑 탭 스타일 a 태그 추가 시작');
+      const page = browserService.getCurrentPage();
 
-      let isFirst = true;
+      // 1. 페이지 body에 실제 네이버 쇼핑 탭과 동일한 a 태그 추가
+      await page.evaluate((url) => {
+        const link = document.createElement('a');
+        link.setAttribute('role', 'tab');
+        link.href = url;
+        link.setAttribute('onclick', "return goOtherCR(this,'a=tab*S.jmp&r=7&i=&u='+urlencode(this.href));");
+        link.className = 'tab';
+        link.setAttribute('aria-selected', 'false');
+        link.setAttribute('target', '_blank');
+        link.id = 'test-navigation-link';
+        link.textContent = '쇼핑';
 
-      for (const keyword of keywords) {
-        // check block screen (블럭되어도 fetch 소싱은 가능)
-        const isBlockedPage = await this.isBlocked(newPage);
-        if (isBlockedPage) {
-          console.warn(`[소싱] 블럭 페이지 감지 - 키워드 "${keyword}" (fetch 소싱 계속 진행)`);
-        }
+        // 스타일 - 화면 상단에 보이게
+        link.style.position = 'absolute';
+        link.style.top = '10px';
+        link.style.left = '10px';
+        link.style.zIndex = '10000';
+        link.style.padding = '10px 20px';
+        link.style.background = '#fff';
+        link.style.border = '1px solid #ddd';
+        link.style.borderRadius = '4px';
 
-        // 블럭되지 않았고 첫 페이지가 아니면 검색 수행
-        if (!isBlockedPage && !isFirst) {
-          console.log(`[소싱] 쇼핑 탭에서 "${keyword}" 검색 시작`);
+        document.body.appendChild(link);
+        console.log('네이버 쇼핑 탭 스타일 a 태그가 추가되었습니다:', url);
+      }, queryUrl);
 
-          // 1. 검색창에 키워드 입력
-          const inputResult = await this.inputKeywordInShoppingTab(newPage, keyword);
-          if (!inputResult.success) {
-            console.error(`[소싱] 키워드 입력 실패: ${keyword}`);
-            return inputResult;
+      console.log('[소싱] a 태그가 추가됨, 페이지에서 자연스러운 행동 시뮬레이션');
+
+      // 2-1. 먼저 페이지에서 자연스러운 행동 (사람처럼 보이기)
+      await AntiDetectionUtils.naturalDelay(800, 1200);
+
+      // 페이지 조금 스크롤 (사람이 페이지를 확인하는 것처럼)
+      await page.evaluate(() => {
+        window.scrollBy(0, 50 + Math.random() * 100);
+      });
+      await AntiDetectionUtils.naturalDelay(300, 600);
+
+      // 다시 위로 스크롤
+      await page.evaluate(() => {
+        window.scrollTo(0, 0);
+      });
+      await AntiDetectionUtils.naturalDelay(400, 700);
+
+      // 2-2. 방법 3: JavaScript에서 직접 클릭 이벤트 발생
+      console.log('[소싱] JavaScript로 직접 클릭 이벤트 발생 시도');
+      try {
+        await page.evaluate(() => {
+          const link = document.querySelector('#test-navigation-link') as HTMLAnchorElement;
+          if (link) {
+            console.log('링크 찾음, 이벤트 발생 시작');
+
+            // 실제 사용자 클릭과 유사한 이벤트 시퀀스 생성
+            const mouseoverEvent = new MouseEvent('mouseover', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+            });
+
+            const mousedownEvent = new MouseEvent('mousedown', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+              button: 0,
+              buttons: 1,
+              clientX: link.getBoundingClientRect().left + 5,
+              clientY: link.getBoundingClientRect().top + 5,
+            });
+
+            const mouseupEvent = new MouseEvent('mouseup', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+              button: 0,
+              buttons: 0,
+              clientX: link.getBoundingClientRect().left + 5,
+              clientY: link.getBoundingClientRect().top + 5,
+            });
+
+            const clickEvent = new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+              button: 0,
+              buttons: 0,
+              clientX: link.getBoundingClientRect().left + 5,
+              clientY: link.getBoundingClientRect().top + 5,
+            });
+
+            // 이벤트 순서대로 발생
+            link.dispatchEvent(mouseoverEvent);
+            setTimeout(() => {
+              link.dispatchEvent(mousedownEvent);
+              setTimeout(() => {
+                link.dispatchEvent(mouseupEvent);
+                setTimeout(() => {
+                  link.dispatchEvent(clickEvent);
+                  console.log('모든 클릭 이벤트 발생 완료');
+                }, 50);
+              }, 100);
+            }, 200);
+          } else {
+            console.error('링크를 찾을 수 없음');
           }
+        });
 
-          // 2. 잠시 쉬기 (사람처럼)
-          await AntiDetectionUtils.naturalDelay(300, 700);
+        // 이벤트 발생 대기
+        await AntiDetectionUtils.naturalDelay(500, 800);
 
-          // 3. 검색 버튼 클릭
-          const executeResult = await this.executeSearchInShoppingTab(newPage);
-          if (!executeResult.success) {
-            console.error(`[소싱] 검색 실행 실패: ${keyword}`);
-            return executeResult;
-          }
-
-          // 4. 검색 결과 로딩 대기
-          await this.waitForPageLoad(newPage);
-          console.log(`[소싱] 키워드 "${keyword}" 검색 완료`);
-
-          // 5. 가끔 화면 아래로 스크롤 (30% 확률)
-          if (Math.random() < 0.3) {
-            console.log(`[소싱] 자연스러운 스크롤 수행`);
-            await AntiDetectionUtils.simulateScroll(newPage);
-          }
-        }
-
-        isFirst = false; // 첫 페이지 플래그 업데이트
-
-        // NOTICE: 지우면 안됨 임시로 막은것임
-        // 데이터 수집 - 네이버 (블럭되어도 fetch 소싱은 가능)
-        // const naverResult = await this.collectProductDataWithFetch(newPage, keyword);
-        // if (!naverResult.success) return naverResult;
-        // console.log('[소싱] 네이버 데이터 수집 결과', JSON.stringify(naverResult.data));
-        // await this.sendProductData(keyword, naverResult.data.products);
-
-        // 데이터 수집 - 옥션
-        const auctionResult = await this.collectAuctionProductData(newPage, keyword);
-        console.log('[소싱] 옥션 데이터 수집 결과', JSON.stringify(auctionResult.data));
-
-        await AntiDetectionUtils.naturalDelay(1000, 2800);
+        // 네비게이션 대기
+        await AntiDetectionUtils.naturalDelay(2000, 3000);
+        console.log('[소싱] 페이지 이동 완료, 현재 URL:', page.url());
+      } catch (error) {
+        console.error('[소싱] JavaScript 클릭 실패:', error);
       }
 
-      this.isRunning = false;
+      // 방법 1 (주석): hover 후 클릭
+      // await page.hover('#test-navigation-link');
+      // await AntiDetectionUtils.naturalDelay(300, 600);
+      // await page.click('#test-navigation-link');
+      //
+
+      // this.isRunning = false;
       return { success: true, message: '전체 소싱 프로세스 완료' };
     } catch (error) {
       console.error('[소싱] 전체 프로세스 오류:', error);
@@ -174,54 +235,6 @@ export class SourcingService {
   }
 
   // ================================================
-  // 유틸리티 함수들
-  // ================================================
-
-  /**
-   * 현재 페이지가 블럭 페이지인지 확인
-   */
-  private async isBlocked(page: Page): Promise<boolean> {
-    try {
-      const isBlockedPage = await page.evaluate(() => {
-        // 1. 블럭 메시지 텍스트 확인
-        const blockMessages = [
-          '쇼핑 서비스 접속이 일시적으로 제한되었습니다',
-          '접속이 일시적으로 제한',
-          '비정상적인 접근이 감지',
-          '시스템을 통해 아래와 같은 비정상적인 접근',
-        ];
-
-        const bodyText = document.body.innerText || '';
-        const hasBlockMessage = blockMessages.some((msg) => bodyText.includes(msg));
-
-        // 2. 에러 페이지 클래스 확인
-        const hasErrorClass = document.querySelector('.content_error') !== null;
-
-        // 3. title이 짧고 단순한지 확인 (정상 페이지는 검색어가 포함됨)
-        const title = document.title || '';
-        const isSimpleTitle = title === '네이버쇼핑' || title.length < 10;
-
-        // 4. 블럭 페이지 특징적인 링크 확인
-        const hasBlockLink =
-          document.querySelector('a[href*="help.naver.com"]') !== null ||
-          document.querySelector('a[href*="help.pay.naver.com"]') !== null;
-
-        // 블럭 조건: 메시지가 있거나, 에러 클래스가 있거나, 단순한 title + 헬프 링크
-        return hasBlockMessage || hasErrorClass || (isSimpleTitle && hasBlockLink);
-      });
-
-      if (isBlockedPage) {
-        console.warn('[블럭 체크] 블럭 페이지 감지!');
-      }
-
-      return isBlockedPage;
-    } catch (error) {
-      console.error('[블럭 체크] 오류:', error);
-      return false; // 오류 시 블럭되지 않은 것으로 간주
-    }
-  }
-
-  // ================================================
   // 플로우 단계별 함수들 (2nd Depth)
   // ================================================
 
@@ -240,14 +253,24 @@ export class SourcingService {
       const inputResult = await this.inputKeyword(page, keyword);
       if (!inputResult.success) return inputResult;
 
-      // 잠시 쉬기 (사람처럼 보이기 위한 자연스러운 pause)
-      await AntiDetectionUtils.naturalDelay(300, 700);
-
       // 검색 실행
       const executeResult = await this.executeSearch(page);
       if (!executeResult.success) return executeResult;
 
       console.log(`[1단계] 완료: "${keyword}" 검색 성공`);
+
+      // 크롤링 회피 작업 (로그인 상태는 유지)
+      await AntiDetectionUtils.performAntiDetectionCleanup(page, {
+        enableCookieCleanup: false, // 로그인 쿠키 보존
+        enableSessionCleanup: false, // 로그인 세션 보존
+        enableLocalStorageCleanup: false, // 로그인 관련 로컬스토리지 보존
+        enableRandomDelay: true,
+        enableMouseMovement: true,
+        enableScrollSimulation: false, // 스크롤 시뮬레이션 제거
+        minDelay: 1000,
+        maxDelay: 2000,
+      });
+
       return { success: true, message: '메인 페이지 검색 완료' };
     } catch (error) {
       console.error('[1단계] 오류:', error);
@@ -270,6 +293,19 @@ export class SourcingService {
       if (!clickResult.success) return clickResult;
 
       console.log('[2단계] 완료: 쇼핑 탭 클릭 성공');
+
+      // 크롤링 회피 작업 (탭 전환 전, 로그인 상태는 유지)
+      await AntiDetectionUtils.performAntiDetectionCleanup(page, {
+        enableCookieCleanup: false, // 로그인 쿠키 보존
+        enableSessionCleanup: false, // 로그인 세션 보존
+        enableLocalStorageCleanup: false, // 로그인 관련 로컬스토리지 보존
+        enableRandomDelay: true,
+        enableMouseMovement: true,
+        enableScrollSimulation: false, // 탭 전환 직전이므로 스크롤 불필요
+        minDelay: 1500,
+        maxDelay: 2500,
+      });
+
       return { success: true, message: '쇼핑 탭 클릭 완료' };
     } catch (error) {
       console.error('[2단계] 오류:', error);
@@ -303,7 +339,8 @@ export class SourcingService {
       if (dataResult.success) {
         console.log('[3단계] 클릭 방식 데이터 수집 성공', dataResult);
         // 데이터 전송
-        await this.sendProductDataWithTouching(keyword, dataResult.data.processedData);
+        const res = await this.sendProductDataWithTouching(keyword, dataResult.data.processedData);
+        console.log('[3단계] 클릭 방식 데이터 전송 성공', res);
       }
 
       console.log(`[3단계] 완료: "${keyword}" 데이터 수집 성공`);
@@ -366,16 +403,22 @@ export class SourcingService {
    */
   private async prepareBrowser(): Promise<SourcingResult> {
     try {
-      // userDataDir 설정으로 영구 프로필 사용 (봇 감지 우회)
-      // Electron의 안전한 경로 사용 (Windows/Mac 모두 지원)
-      const userDataPath = app.getPath('userData'); // OS별 적절한 경로
-      const chromeUserDataDir = path.join(userDataPath, 'chrome-profile');
+      await browserService.initializeBrowser();
 
-      console.log('[소싱] Chrome 프로필 경로:', chromeUserDataDir);
+      // 브라우저 초기화 후 크롤링 회피 설정 (로그인 상태는 유지)
+      const currentPage = browserService.getCurrentPage();
+      if (currentPage) {
+        // User-Agent 랜덤화
+        await AntiDetectionUtils.setRandomUserAgent(currentPage);
 
-      await browserService.initializeBrowser({
-        userDataDir: chromeUserDataDir,
-      });
+        // 로그인 관련 쿠키는 유지하면서 크롤링 감지 관련 데이터만 정리
+        await AntiDetectionUtils.cleanupSession(currentPage, {
+          enableCookieCleanup: false, // 로그인 쿠키 보존
+          enableSessionCleanup: false, // 로그인 세션 보존
+          enableLocalStorageCleanup: true, // 로컬스토리지는 정리 (크롤링 감지 방지)
+          enableRandomDelay: false, // 초기화 시에는 딜레이 없이
+        });
+      }
 
       const isLoggedIn = await browserService.checkNaverLoginStatus();
 
@@ -412,6 +455,18 @@ export class SourcingService {
 
       const newPage = pages[pages.length - 1];
       browserService.setCurrentPage(newPage);
+
+      // 새 탭 전환 시 크롤링 회피 작업 (로그인 상태는 유지)
+      await AntiDetectionUtils.handleTabSwitch(newPage, {
+        enableCookieCleanup: false, // 로그인 쿠키 보존
+        enableSessionCleanup: false, // 로그인 세션 보존
+        enableLocalStorageCleanup: false, // 로그인 관련 로컬스토리지 보존
+        enableRandomDelay: true,
+        enableMouseMovement: true,
+        enableScrollSimulation: false, // 스크롤 시뮬레이션 제거
+        minDelay: 2000,
+        maxDelay: 3000,
+      });
 
       return newPage;
     } catch (_error) {
@@ -461,7 +516,7 @@ export class SourcingService {
       const inputSuccess = await findAndTypeNaturallyMultiple(page, searchSelectors, keyword, {
         minDelay: 80,
         maxDelay: 200,
-        copyPasteChance: 0, // 복사/붙여넣기 비활성화 (값이 안 들어가는 문제)
+        copyPasteChance: 0, // 복사 붙여넣기 비활성화 (엉뚱한 곳에 붙여넣기 문제)
         mistakeChance: 0.15, // 15% 확률로 실수
         correctionChance: 1.0, // 실수 시 100% 수정
         clearFirst: true, // 기존 텍스트 클리어
@@ -481,13 +536,13 @@ export class SourcingService {
 
   private async executeSearch(page: Page): Promise<SourcingResult> {
     try {
-      console.log('[검색 실행] 검색 시작');
+      console.log('[검색 실행] 자연스러운 검색 시작');
 
-      // 검색 실행 (엔터키 사용)
+      // 자연스러운 검색 실행 (엔터키 vs 버튼 클릭 확률적 선택)
       const searchSuccess = await executeNaverMainSearch(page, {
-        enterKeyChance: 1.0, // 엔터키만 사용 (단순화)
-        clickDelay: 0,
-        waitAfterSearch: 1000, // 최소한의 대기만
+        enterKeyChance: 0.85, // 85% 확률로 엔터키 사용 (네이버 특성상)
+        clickDelay: 400,
+        waitAfterSearch: 3000, // 검색 결과 로딩 대기
       });
 
       if (!searchSuccess) {
@@ -548,10 +603,6 @@ export class SourcingService {
   }
 
   private async findAndClickShoppingTab(page: Page): Promise<SourcingResult> {
-    // &productSet=checkout : 네이버페이
-    // &pagingSize=80 : 80개씩 보기
-    // &agency=true : 해외 직구 보기
-
     try {
       console.log('[쇼핑 탭] 클릭 시작');
 
@@ -615,230 +666,13 @@ export class SourcingService {
     return { isRestricted: false };
   }
 
-  /**
-   * Fetch API를 사용한 데이터 수집
-   */
+  // 사용하지 않는 함수 - 클릭 방식으로 대체됨
+  /*
   private async collectProductDataWithFetch(page: Page, keyword: string): Promise<SourcingResult> {
-    try {
-      console.log(`[Fetch 데이터 수집] "${keyword}" 시작`);
-
-      // 1. API URL 생성
-      const encodedKeyword = encodeURIComponent(keyword);
-      const apiUrl = `/api/search/all?sort=rel&pagingIndex=1&pagingSize=80&viewType=list&productSet=checkout&frm=NVSCPRO&query=${encodedKeyword}&origQuery=${encodedKeyword}&adQuery=${encodedKeyword}&iq=&eq=&xq=&window=&agency=true`;
-
-      console.log(`[Fetch 데이터 수집] API URL: ${apiUrl}`);
-
-      // 2. Fetch로 API 호출
-      const response = await page.evaluate(async (url) => {
-        try {
-          const res = await fetch(url, {
-            method: 'GET',
-            headers: {
-              Accept: 'application/json, text/plain, */*',
-              Logic: 'PART',
-            },
-          });
-
-          if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-          }
-
-          const data = await res.json();
-          return { success: true, data };
-        } catch (error: any) {
-          return { success: false, error: error.message };
-        }
-      }, apiUrl);
-
-      if (!response.success) {
-        console.error('[Fetch 데이터 수집] API 호출 실패:', response.error);
-        return { success: false, message: 'API 호출 실패: ' + response.error };
-      }
-
-      console.log('[Fetch 데이터 수집] API 응답 받음');
-
-      // 3. 데이터 처리
-      const apiData = response.data;
-      if (!apiData?.shoppingResult?.products) {
-        console.error('[Fetch 데이터 수집] 상품 데이터 없음');
-        return { success: false, message: '상품 데이터를 찾을 수 없습니다.' };
-      }
-
-      const products = apiData.shoppingResult.products;
-      console.log(`[Fetch 데이터 수집] 상품 ${products.length}개 수집`);
-
-      // 4. 중복 제거 (mallPcUrl 기준)
-      const uniqueProducts = products
-        .map((item: any) => ({
-          mallName: item.mallName,
-          mallPcUrl: item.mallPcUrl,
-          productTitle: item.productTitle,
-          price: item.price,
-          imageUrl: item.imageUrl,
-        }))
-        .filter(
-          (item: any, index: number, self: any[]) => index === self.findIndex((t) => t.mallPcUrl === item.mallPcUrl),
-        );
-
-      console.log(`[Fetch 데이터 수집] 중복 제거 후 ${uniqueProducts.length}개`);
-
-      return {
-        success: true,
-        message: `Fetch 방식 데이터 수집 완료: ${uniqueProducts.length}개`,
-        data: {
-          keyword: keyword,
-          products: uniqueProducts,
-          totalCount: uniqueProducts.length,
-        },
-      };
-    } catch (error) {
-      console.error('[Fetch 데이터 수집] 오류:', error);
-      return {
-        success: false,
-        message: 'Fetch 방식 데이터 수집 중 오류 발생',
-      };
-    }
+    // API 방식 데이터 수집 (현재 사용하지 않음)
+    return { success: false, message: 'API 방식은 현재 사용하지 않습니다.' };
   }
-
-  /**
-   * 옥션 상품 데이터 수집 (페이지 이동 방식)
-   */
-  private async collectAuctionProductData(page: Page, keyword: string): Promise<SourcingResult> {
-    try {
-      console.log(`[옥션 데이터 수집] "${keyword}" 시작`);
-
-      // 1. 옥션 URL로 페이지 이동
-      const encodedKeyword = encodeURIComponent(keyword);
-      const auctionUrl = `https://www.auction.co.kr/n/search?keyword=${encodedKeyword}`;
-
-      console.log(`[옥션 데이터 수집] URL로 이동: ${auctionUrl}`);
-      await page.goto(auctionUrl, {
-        waitUntil: 'domcontentloaded',
-        timeout: 30000,
-      });
-
-      console.log('[옥션 데이터 수집] 페이지 로딩 완료');
-
-      // 2. 현재 페이지에서 #__NEXT_DATA__ JSON 추출
-      const nextDataResult = await page.evaluate(() => {
-        try {
-          // #__NEXT_DATA__ 찾기
-          const nextDataScript = document.querySelector('#__NEXT_DATA__');
-          if (!nextDataScript || !nextDataScript.textContent) {
-            return { success: false, error: '#__NEXT_DATA__를 찾을 수 없음' };
-          }
-
-          // JSON 파싱
-          const jsonData = JSON.parse(nextDataScript.textContent);
-          console.log('[옥션 데이터 수집] __NEXT_DATA__ 파싱 완료');
-          return { success: true, data: jsonData };
-        } catch (error: any) {
-          return { success: false, error: error.message };
-        }
-      });
-
-      if (!nextDataResult.success) {
-        console.error('[옥션 데이터 수집] __NEXT_DATA__ 파싱 실패:', nextDataResult.error);
-
-        // history back 후 에러 반환
-        await page.goBack({ waitUntil: 'domcontentloaded' });
-        return { success: false, message: '__NEXT_DATA__ 파싱 실패: ' + nextDataResult.error };
-      }
-
-      const rawAuctionData = nextDataResult.data;
-      console.log('[옥션 데이터 수집] __NEXT_DATA__ 파싱 완료');
-
-      // 3. rawAuctionData에서 상품 정보 추출
-      const relatedTags: any[] = [];
-      const uniqueMenuTag: any[] = [];
-
-      const list =
-        rawAuctionData?.props?.pageProps?.initialStates?.curatorData?.regions?.reduce((acc: any[], curr: any) => {
-          const subList = curr.modules.reduce((subAcc: any[], subCurr: any) => {
-            const subSubList = subCurr.rows.reduce((subSubAcc: any[], subSubCurr: any) => {
-              // ItemCardGeneral이 아니면 스킵
-              if (subSubCurr.designName !== 'ItemCardGeneral') return subSubAcc;
-
-              // seller.text가 없으면 스킵
-              if (!subSubCurr.viewModel?.seller?.text) return subSubAcc;
-
-              // 중복 제거 (mallName 기준)
-              if (
-                subSubAcc.some((item) => item.mallName === subSubCurr.viewModel.seller.text) ||
-                subAcc.some((item) => item.mallName === subSubCurr.viewModel.seller.text) ||
-                acc.some((item) => item.mallName === subSubCurr.viewModel.seller.text)
-              )
-                return subSubAcc;
-
-              return [
-                ...subSubAcc,
-                {
-                  mallName: subSubCurr.viewModel.seller.text,
-                  mallPcUrl: subSubCurr.viewModel.seller.link,
-                },
-              ];
-            }, []);
-            return [...subAcc, ...subSubList];
-          }, []);
-          return [...acc, ...subList];
-        }, []) || [];
-
-      console.log(`[옥션 데이터 수집] 상품 ${list.length}개 수집`);
-
-      // 4. 서버로 전송할 데이터 구성
-      const resultData = {
-        squery: keyword,
-        usernum: this.currentConfig?.usernum || '',
-        spricelimit: this.currentConfig?.minAmount || '0',
-        epricelimit: this.currentConfig?.maxAmount || '99999999',
-        platforms: 'AUCTION',
-        result: {
-          relatedTags,
-          uniqueMenuTag,
-          list,
-        },
-      };
-
-      // 5. api.open-nest.co.kr로 전송
-      if (list.length > 0) {
-        console.log('[옥션 데이터 수집] api.open-nest.co.kr로 전송 시작');
-        console.log('[옥션 데이터 수집] 전송 데이터:', JSON.stringify(resultData));
-        // TODO: api.open-nest.co.kr 전송 로직 추가
-        // const sendResult = await axios.post('https://api.open-nest.co.kr/...', resultData);
-      }
-
-      // 6. history back으로 원래 페이지로 돌아가기
-      console.log('[옥션 데이터 수집] 원래 페이지로 돌아가기 (history back)');
-      await page.goBack({ waitUntil: 'domcontentloaded' });
-      await AntiDetectionUtils.naturalDelay(500, 1000);
-      console.log('[옥션 데이터 수집] 원래 페이지로 복귀 완료');
-
-      return {
-        success: true,
-        message: `옥션 데이터 수집 완료: ${list.length}개`,
-        data: {
-          keyword: keyword,
-          products: list,
-          totalCount: list.length,
-        },
-      };
-    } catch (error) {
-      console.error('[옥션 데이터 수집] 오류:', error);
-
-      // 오류 발생 시에도 원래 페이지로 돌아가기 시도
-      try {
-        await page.goBack({ waitUntil: 'domcontentloaded' });
-        console.log('[옥션 데이터 수집] 오류 후 원래 페이지로 복귀');
-      } catch (backError) {
-        console.error('[옥션 데이터 수집] 뒤로가기 실패:', backError);
-      }
-
-      return {
-        success: false,
-        message: '옥션 데이터 수집 중 오류 발생',
-      };
-    }
-  }
+  */
 
   private async collectProductDataWithTouching(page: Page, keyword: string): Promise<SourcingResult> {
     try {
@@ -996,73 +830,6 @@ export class SourcingService {
     return res;
   }
 
-  /**
-   * Fetch 방식 상품 데이터 전송
-   * @param keyword 검색 키워드
-   * @param products 상품 목록 [{ mallName, mallPcUrl, ... }]
-   */
-  private async sendProductData(
-    keyword: string,
-    products: Array<{ mallName: string; mallPcUrl: string }>,
-  ): Promise<any> {
-    try {
-      console.log(`[데이터 전송] 키워드 "${keyword}" - ${products.length}개 상품 전송 시작`);
-
-      // 중복 제거 (mallPcUrl 기준)
-      const uniqueProducts = products
-        .map((item) => ({
-          mallName: item.mallName,
-          mallPcUrl: item.mallPcUrl,
-        }))
-        .filter((item, index, self) => index === self.findIndex((t) => t.mallPcUrl === item.mallPcUrl));
-
-      console.log(`[데이터 전송] 중복 제거 후 ${uniqueProducts.length}개 상품`);
-
-      if (uniqueProducts.length === 0) {
-        console.warn('[데이터 전송] 전송할 상품이 없습니다.');
-        return { success: false, message: '전송할 상품이 없습니다.' };
-      }
-
-      // 전송 데이터 구성 (api-search-all 결과처리.txt 포맷)
-      const requestData = {
-        squery: keyword, // 검색 키워드 추가
-        usernum: this.currentConfig?.usernum || '',
-        bestyn: this.currentConfig?.includeBest ? 'Y' : 'N',
-        newyn: this.currentConfig?.includeNew ? 'Y' : 'N',
-        inserturl: 'https://selltkey.com/scb/api/setSearchResultDirect.asp',
-        spricelimit: this.currentConfig?.minAmount || '0',
-        epricelimit: this.currentConfig?.maxAmount || '99999999',
-        jsonstring: { products: uniqueProducts },
-      };
-
-      // Main 프로세스에서 직접 axios 호출 (CORS 문제 없음)
-      // ASP 서버는 form-urlencoded 또는 특별한 포맷을 기대할 수 있음
-      const url = 'https://selltkey.com/scb/api/setSearchResultDirect.asp';
-
-      // jsonstring을 JSON 문자열로 변환
-
-      const response = await axios.post(url, requestData, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      const result = response.data;
-
-      console.log(`[데이터 전송] 전송 결과:`, result);
-
-      if (result.success) {
-        console.log(`[데이터 전송] 성공 - 키워드 "${keyword}"`);
-      } else {
-        console.error(`[데이터 전송] 실패 - 키워드 "${keyword}":`, result.message);
-      }
-
-      return result;
-    } catch (error) {
-      console.error('[데이터 전송] 오류:', error);
-      return { success: false, message: '데이터 전송 중 오류 발생' };
-    }
-  }
-
   private async inputKeywordInShoppingTab(page: Page, keyword: string): Promise<SourcingResult> {
     try {
       console.log(`[쇼핑 탭 키워드 입력] "${keyword}" 자연스러운 입력 시작`);
@@ -1089,7 +856,7 @@ export class SourcingService {
       const inputSuccess = await findAndTypeNaturallyMultiple(page, searchSelectors, keyword, {
         minDelay: 120,
         maxDelay: 280,
-        copyPasteChance: 0, // 복사/붙여넣기 비활성화 (값이 안 들어가는 문제)
+        copyPasteChance: 0, // 복사 붙여넣기 비활성화 (엉뚱한 곳에 붙여넣기 문제)
         mistakeChance: 0.12,
         correctionChance: 1.0,
         clearFirst: true, // 기존 텍스트 클리어
@@ -1732,12 +1499,7 @@ export class SourcingService {
 // 싱글톤 인스턴스
 export const sourcingService = new SourcingService();
 
-// https://search.shopping.naver.com/search/all?where=all&frm=NVSCTAB&query=%EC%9D%B8%EA%B3%B5+%EC%9D%B8%EC%A1%B0+%EC%9E%94%EB%94%94&
-// https://search.shopping.naver.com/search/all?adQuery=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&frm=NVSCTAB&origQuery=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&pagingIndex=1&pagingSize=40&productSet=checkout&query=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&sort=rel&timestamp=&viewType=list
-// https://search.shopping.naver.com/search/all?adQuery=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&frm=NVSCTAB&origQuery=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&pagingIndex=1&pagingSize=80&productSet=total&query=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&sort=rel&timestamp=&viewType=list
-// https://search.shopping.naver.com/search/all?adQuery=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&frm=NVSCTAB&origQuery=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&pagingIndex=1&pagingSize=80&productSet=checkout&query=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&sort=rel&timestamp=&viewType=list
-// https://search.shopping.naver.com/search/all?adQuery=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&frm=NVSCTAB&origQuery=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&pagingIndex=1&pagingSize=80&productSet=checkout&query=%EC%9D%B8%EA%B3%B5%20%EC%9D%B8%EC%A1%B0%20%EC%9E%94%EB%94%94&sort=rel&timestamp=&viewType=list
-
-// &productSet=checkout : 네이버페이
-// &pagingSize=80 : 80개씩 보기
-// &agency=true : 해외 직구 보기
+/*
+<a role="tab" href="/p/crd/rd?m=1&amp;px=628&amp;py=105&amp;sx=628&amp;sy=105&amp;vw=1440&amp;vh=782&amp;bw=633&amp;bh=60&amp;bx=458&amp;by=40&amp;isx=0&amp;p=jMOjGlqo15wssB4%2BwB0ssssss9s-437840&amp;q=%EA%B0%80%EC%A0%95%EC%9A%A9+%EC%BB%B4%ED%94%84%EB%A0%88%EC%85%94&amp;ie=utf8&amp;rev=1&amp;ssc=tab.nx.all&amp;f=nexearch&amp;w=nexearch&amp;s=V7GljE%2BEk%2BiLOkuFtz6epA%3D%3D&amp;time=1759992554552&amp;a=tab*S.jmp&amp;r=7&amp;i=&amp;u=https%3A%2F%2Fsearch.shopping.naver.com%2Fsearch%2Fall%3Fwhere%3Dall%26frm%3DNVSCTAB%26query%3D%25EA%25B0%2580%25EC%25A0%2595%25EC%259A%25A9%2B%25EC%25BB%25B4%25ED%2594%2584%25EB%25A0%2588%25EC%2585%2594" onclick="return goOtherCR(this,'a=tab*S.jmp&amp;r=7&amp;i=&amp;u='+urlencode(this.href));" class="tab" aria-selected="false" target="_blank" referrerpolicy="unsafe-url" crp="a=tab*S.jmp&amp;r=7&amp;i=&amp;u=https%3A%2F%2Fsearch.shopping.naver.com%2Fsearch%2Fall%3Fwhere%3Dall%26frm%3DNVSCTAB%26query%3D%25EA%25B0%2580%25EC%25A0%2595%25EC%259A%25A9%2B%25EC%25BB%25B4%25ED%2594%2584%25EB%25A0%2588%25EC%2585%2594" cru="https://search.shopping.naver.com/search/all?where=all&amp;frm=NVSCTAB&amp;query=%EA%B0%80%EC%A0%95%EC%9A%A9+%EC%BB%B4%ED%94%84%EB%A0%88%EC%85%94">쇼핑</a>
+<a role="tab" href="https://search.shopping.naver.com/search/all?where=all&amp;frm=NVSCTAB&amp;query=%EA%B0%80%EC%A0%95%EC%9A%A9+%EC%BB%B4%ED%94%84%EB%A0%88%EC%85%94" onclick="return goOtherCR(this,'a=tab*S.jmp&amp;r=7&amp;i=&amp;u='+urlencode(this.href));" class="tab" aria-selected="false" target="_blank">쇼핑</a>
+*/

@@ -252,6 +252,22 @@ app.whenReady().then(() => {
     }
   });
 
+  // 상품 데이터 전송 (CORS 우회용)
+  ipcMain.handle('send-product-data', async (_, requestData) => {
+    try {
+      console.log('[IPC] 상품 데이터 전송 요청:', requestData);
+
+      const url = 'https://selltkey.com/scb/api/setSearchResultDirect.asp';
+      const response = await axios.post(url, requestData);
+
+      console.log('[IPC] 상품 데이터 전송 결과:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('[IPC] 상품 데이터 전송 오류:', error);
+      return { success: false, message: '데이터 전송 중 오류 발생' };
+    }
+  });
+
   createWindow();
 
   app.on('activate', function () {

@@ -50,7 +50,7 @@ export async function typeNaturally(
   const {
     minDelay = 80,
     maxDelay = 200,
-    copyPasteChance = 0.3,
+    copyPasteChance = 0, // 복사/붙여넣기 비활성화 (값이 안 들어가는 문제)
     mistakeChance = 0.15,
     correctionChance = 1.0,
     clearFirst = true,

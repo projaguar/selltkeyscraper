@@ -3,9 +3,9 @@
  * 여러 서비스에서 공통으로 사용하는 브라우저 인스턴스 관리
  */
 
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { Browser, Page } from 'puppeteer';
+import puppeteer, { Browser, Page } from 'puppeteer';
+// import puppeteer from 'puppeteer-extra';
+// import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -26,18 +26,8 @@ export class BrowserService {
 
   private constructor() {
     // 싱글톤 패턴을 위한 private 생성자
-    // Stealth 플러그인 초기화 (안전한 설정)
-    try {
-      puppeteer.use(
-        StealthPlugin({
-          // 기본 설정만 사용하고 추가 옵션은 비활성화
-          runOnInsecureOrigins: false,
-        }),
-      );
-      console.log('[BrowserService] Stealth 플러그인 초기화 완료');
-    } catch (error) {
-      console.warn('[BrowserService] Stealth 플러그인 초기화 실패, 기본 모드로 실행:', error);
-    }
+    // Stealth 플러그인 제거 - 일반 puppeteer 사용
+    console.log('[BrowserService] 일반 Puppeteer 모드로 초기화 (Stealth 플러그인 미사용)');
   }
 
   /**
@@ -142,25 +132,22 @@ export class BrowserService {
       const launchOptions: any = {
         headless: defaultConfig.headless,
         args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
+          // 최소한의 봇 감지 우회 설정만 사용
+          '--disable-blink-features=AutomationControlled',
+          '--exclude-switches=enable-automation',
+
+          // 일반적인 브라우저 설정
           `--window-size=${defaultConfig.width},${defaultConfig.height}`,
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor',
-          '--start-maximized', // 브라우저를 최대화된 상태로 시작
-          '--disable-blink-features=AutomationControlled', // 자동화 감지 방지
-          '--disable-extensions-except', // 확장 프로그램 비활성화
-          '--disable-plugins-discovery', // 플러그인 자동 감지 비활성화
-          '--lang=ko-KR', // 한국어 설정
-          '--accept-lang=ko-KR,ko;q=0.9,en;q=0.8', // 언어 우선순위 설정
+          '--lang=ko-KR',
+
+          // 안정성을 위한 최소 설정
+          '--disable-dev-shm-usage',
+          '--no-first-run',
+          '--no-default-browser-check',
         ],
         userDataDir: defaultConfig.userDataDir,
-        defaultViewport: null, // 기본 뷰포트 설정 비활성화
+        defaultViewport: null,
+        ignoreDefaultArgs: ['--enable-automation'],
       };
 
       // Windows에서 Chrome 경로가 발견되면 사용
@@ -224,27 +211,27 @@ export class BrowserService {
     // 빈 탭이 없으면 새로 생성
     const page = await this.browser.newPage();
 
-    // 한국어 브라우저로 설정
+    // 최소한의 설정만 적용
     await page.setUserAgent(
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     );
 
-    // 언어 설정을 한국어로 고정
     await page.setExtraHTTPHeaders({
       'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
     });
 
-    // 브라우저 언어 설정 강제
+    // 핵심적인 봇 감지 우회만 적용
     await page.evaluateOnNewDocument(() => {
-      Object.defineProperty(navigator, 'language', {
-        get: () => 'ko-KR',
+      // navigator.webdriver 제거 (가장 중요!)
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined,
       });
-      Object.defineProperty(navigator, 'languages', {
-        get: () => ['ko-KR', 'ko', 'en'],
-      });
+
+      // Chrome 자동화 감지 플래그 제거
+      const cdcProps = Object.keys(window).filter((key) => key.startsWith('cdc_'));
+      cdcProps.forEach((prop) => delete (window as any)[prop]);
     });
 
-    // 뷰포트를 고정하지 않고 브라우저 기본 크기 사용
     await page.setDefaultNavigationTimeout(30000);
 
     return page;
