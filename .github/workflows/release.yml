@@ -29,28 +29,41 @@ jobs:
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
-        run: npm install
+        run: |
+          npm install
+          npm install --force @rollup/rollup-win32-x64-msvc lightningcss-win32-x64-msvc @tailwindcss/oxide-win32-x64-msvc
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: bun install
 
-      - name: Build and Package (Windows)
+      - name: Typecheck (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           npx tsc --noEmit -p tsconfig.node.json --composite false
           npx tsc --noEmit -p tsconfig.web.json --composite false
-          npx electron-vite build
-          npx electron-builder --win --x64 --publish never
+
+      - name: Typecheck (macOS)
+        if: matrix.os == 'macos-latest'
+        run: bun run typecheck
+
+      - name: Build (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npx electron-vite build
+
+      - name: Build (macOS)
+        if: matrix.os == 'macos-latest'
+        run: bunx electron-vite build
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npx electron-builder --win --x64 --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Package (macOS)
+      - name: Package (macOS)
         if: matrix.os == 'macos-latest'
-        run: |
-          bun run typecheck
-          bunx electron-vite build
-          bunx electron-builder --mac --publish never
+        run: bunx electron-builder --mac --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
