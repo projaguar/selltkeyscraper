@@ -29,28 +29,29 @@ jobs:
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
-        run: |
-          npm install
-          npm install @rollup/rollup-win32-x64-msvc lightningcss-win32-x64-msvc --no-save
+        run: npm install
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
-        run: |
-          bun install
-          npm install @rollup/rollup-darwin-arm64 lightningcss-darwin-arm64 --no-save
+        run: bun install
 
-      - name: Build application
+      - name: Build application (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npm run build
+
+      - name: Build application (macOS)
+        if: matrix.os == 'macos-latest'
         run: bun run build
 
       - name: Build Windows executable
         if: matrix.os == 'windows-latest'
-        run: bun run build && bunx electron-builder --win --x64 --publish never
+        run: npx electron-builder --win --x64 --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build macOS executable
         if: matrix.os == 'macos-latest'
-        run: bun run build && bunx electron-builder --mac --publish never
+        run: bunx electron-builder --mac --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
