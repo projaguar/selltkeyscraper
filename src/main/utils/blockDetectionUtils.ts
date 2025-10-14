@@ -12,7 +12,7 @@ export class BlockDetectionUtils {
   static async isBlockedPage(page: Page): Promise<boolean> {
     try {
       const isBlocked = await page.evaluate(() => {
-        // 1. 블럭 메시지 텍스트 확인
+        // 1. 블럭 메시지 텍스트 확인 (가장 확실한 방법)
         const blockMessages = [
           '쇼핑 서비스 접속이 일시적으로 제한되었습니다',
           '접속이 일시적으로 제한',
@@ -23,20 +23,22 @@ export class BlockDetectionUtils {
         const bodyText = document.body.innerText || '';
         const hasBlockMessage = blockMessages.some((msg) => bodyText.includes(msg));
 
-        // 2. 에러 페이지 클래스 확인
+        // 2. 에러 페이지 클래스 확인 (블럭 페이지의 특징적인 클래스)
         const hasErrorClass = document.querySelector('.content_error') !== null;
 
-        // 3. 페이지 제목 확인
-        const title = document.title || '';
-        const isSimpleTitle = title === '네이버쇼핑' || title.length < 10;
+        // 3. 블럭 페이지의 구체적인 텍스트 패턴 확인
+        const hasBlockPatterns = [
+          '네트워크의 접속을 일시적으로 제한',
+          '상품 구매, 탐색과 무관한 외부 이벤트',
+          '짧은 시간 내에 너무 많은 요청',
+          'VPN을 사용하여 접속한 IP',
+          '특정 확장 프로그램 이용 시',
+        ];
 
-        // 4. 블럭 페이지 특징적인 링크 확인
-        const hasHelpLinks =
-          document.querySelector('a[href*="help.naver.com"]') !== null ||
-          document.querySelector('a[href*="help.pay.naver.com"]') !== null;
+        const hasBlockPattern = hasBlockPatterns.some((pattern) => bodyText.includes(pattern));
 
-        // 블럭 조건: 메시지가 있거나, 에러 클래스가 있거나, 단순한 title + 헬프 링크
-        return hasBlockMessage || hasErrorClass || (isSimpleTitle && hasHelpLinks);
+        // 블럭 조건: 명확한 블럭 메시지가 있거나, 에러 클래스와 블럭 패턴이 함께 있는 경우
+        return hasBlockMessage || (hasErrorClass && hasBlockPattern);
       });
 
       if (isBlocked) {
@@ -95,16 +97,24 @@ export class BlockDetectionUtils {
         const foundMessages = blockMessages.filter((msg) => bodyText.includes(msg));
 
         const hasErrorClass = document.querySelector('.content_error') !== null;
-        const hasHelpLinks =
-          document.querySelector('a[href*="help.naver.com"]') !== null ||
-          document.querySelector('a[href*="help.pay.naver.com"]') !== null;
+
+        const hasBlockPatterns = [
+          '네트워크의 접속을 일시적으로 제한',
+          '상품 구매, 탐색과 무관한 외부 이벤트',
+          '짧은 시간 내에 너무 많은 요청',
+          'VPN을 사용하여 접속한 IP',
+          '특정 확장 프로그램 이용 시',
+        ];
+
+        const foundPatterns = hasBlockPatterns.filter((pattern) => bodyText.includes(pattern));
 
         return {
           title: document.title || '',
           hasBlockMessage: foundMessages.length > 0,
           hasErrorClass,
-          hasHelpLinks,
+          hasBlockPattern: foundPatterns.length > 0,
           blockMessages: foundMessages,
+          blockPatterns: foundPatterns,
         };
       });
 
@@ -114,8 +124,9 @@ export class BlockDetectionUtils {
         title: status.title,
         hasBlockMessage: status.hasBlockMessage,
         hasErrorClass: status.hasErrorClass,
-        hasHelpLinks: status.hasHelpLinks,
+        hasBlockPattern: status.hasBlockPattern,
         blockMessages: status.blockMessages,
+        blockPatterns: status.blockPatterns,
       };
     } catch (error) {
       console.error('[BlockDetectionUtils] 블럭 상태 확인 중 오류:', error);
@@ -125,8 +136,9 @@ export class BlockDetectionUtils {
         title: '',
         hasBlockMessage: false,
         hasErrorClass: false,
-        hasHelpLinks: false,
+        hasBlockPattern: false,
         blockMessages: [],
+        blockPatterns: [],
       };
     }
   }
