@@ -78,8 +78,9 @@ export class BlockDetectionUtils {
     title: string;
     hasBlockMessage: boolean;
     hasErrorClass: boolean;
-    hasHelpLinks: boolean;
+    hasBlockPattern: boolean;
     blockMessages: string[];
+    blockPatterns: string[];
   }> {
     try {
       const url = page.url();
