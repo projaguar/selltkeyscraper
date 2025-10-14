@@ -11,11 +11,13 @@ import { Page } from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import AntiDetectionUtils from '../utils/antiDetectionUtils';
+import { BlockDetectionUtils } from '../utils/blockDetectionUtils';
 import {
   findAndTypeNaturallyMultiple,
   executeNaverMainSearch,
   executeShoppingTabSearch,
 } from '../utils/naturalInputUtils';
+import { CaptchaUtils } from '../utils/captchaUtils';
 
 export interface SourcingConfig {
   minAmount: string;
@@ -130,6 +132,9 @@ export class SourcingService {
       let isFirst = true;
 
       for (let i = 0; i < keywords.length; i++) {
+        // 캡챠 화면 대기
+        await CaptchaUtils.handleCaptcha(newPage);
+
         const keyword = keywords[i];
         this.currentKeyword = keyword;
         this.currentKeywordIndex = i + 1;
@@ -145,7 +150,7 @@ export class SourcingService {
         }
 
         // check block screen (블럭되어도 fetch 소싱은 가능)
-        const isBlockedPage = await this.isBlocked(newPage);
+        const isBlockedPage = await BlockDetectionUtils.isBlockedPage(newPage);
         if (isBlockedPage) {
           this.addLog(`⚠️ 블럭 페이지 감지 (fetch 소싱 계속 진행)`);
         }
@@ -268,50 +273,6 @@ export class SourcingService {
   // ================================================
   // 유틸리티 함수들
   // ================================================
-
-  /**
-   * 현재 페이지가 블럭 페이지인지 확인
-   */
-  private async isBlocked(page: Page): Promise<boolean> {
-    try {
-      const isBlockedPage = await page.evaluate(() => {
-        // 1. 블럭 메시지 텍스트 확인
-        const blockMessages = [
-          '쇼핑 서비스 접속이 일시적으로 제한되었습니다',
-          '접속이 일시적으로 제한',
-          '비정상적인 접근이 감지',
-          '시스템을 통해 아래와 같은 비정상적인 접근',
-        ];
-
-        const bodyText = document.body.innerText || '';
-        const hasBlockMessage = blockMessages.some((msg) => bodyText.includes(msg));
-
-        // 2. 에러 페이지 클래스 확인
-        const hasErrorClass = document.querySelector('.content_error') !== null;
-
-        // 3. title이 짧고 단순한지 확인 (정상 페이지는 검색어가 포함됨)
-        const title = document.title || '';
-        const isSimpleTitle = title === '네이버쇼핑' || title.length < 10;
-
-        // 4. 블럭 페이지 특징적인 링크 확인
-        const hasBlockLink =
-          document.querySelector('a[href*="help.naver.com"]') !== null ||
-          document.querySelector('a[href*="help.pay.naver.com"]') !== null;
-
-        // 블럭 조건: 메시지가 있거나, 에러 클래스가 있거나, 단순한 title + 헬프 링크
-        return hasBlockMessage || hasErrorClass || (isSimpleTitle && hasBlockLink);
-      });
-
-      if (isBlockedPage) {
-        console.warn('[블럭 체크] 블럭 페이지 감지!');
-      }
-
-      return isBlockedPage;
-    } catch (error) {
-      console.error('[블럭 체크] 오류:', error);
-      return false; // 오류 시 블럭되지 않은 것으로 간주
-    }
-  }
 
   // ================================================
   // 플로우 단계별 함수들 (2nd Depth)

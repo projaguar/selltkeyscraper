@@ -5,6 +5,8 @@
 
 import axios from 'axios';
 import { browserService } from './browserService';
+import { CaptchaUtils } from '../utils/captchaUtils';
+import { BlockDetectionUtils } from '../utils/blockDetectionUtils';
 
 export interface CollectionResult {
   success: boolean;
@@ -132,6 +134,15 @@ export class CollectionService {
           console.log('[CollectionService] 수집 작업이 중단되었습니다.');
           break;
         }
+
+        // 블럭 페이지 체크
+        const isBlockedPage = await BlockDetectionUtils.isBlockedPage(page);
+        if (isBlockedPage) {
+          throw new Error('블럭 페이지 감지');
+        }
+
+        // 캡챠 화면 대기
+        await CaptchaUtils.handleCaptcha(page);
 
         console.log(`[CollectionService] 상품 처리 시작: ${item.TARGETSTORENAME} (${item.URLPLATFORMS})`);
 
