@@ -1,17 +1,37 @@
 import { Page } from 'puppeteer';
-
+import axios from 'axios';
 /**
  * 네이버 캡챠 화면 감지 및 해결 대기 유틸리티
  */
 export class CaptchaUtils {
-  static async handleCaptcha(page: Page): Promise<void> {
+  static async handleCaptcha(page: Page, userNum: string): Promise<void> {
     const isCaptcha = await CaptchaUtils.isCaptchaPage(page);
 
     if (isCaptcha) {
+      // 캡챠 정보 전송
+      await CaptchaUtils.sendCaptchaInfo(userNum);
       const resolved = await CaptchaUtils.waitForCaptchaResolution(page);
       if (!resolved) {
         throw new Error('캡챠 해결 실패');
       }
+    }
+  }
+
+  static async sendCaptchaInfo(userNum: string): Promise<void> {
+    try {
+      const url = 'https://selltkey.com/scb/api/setSendError.asp';
+      const params = {
+        userNum,
+        errType: 'NAVER01',
+      };
+
+      console.log('[CaptchaUtils] 캡챠 정보 전송 중...', { userNum, errType: 'NAVER01' });
+
+      const response = await axios.get(url, { params });
+
+      console.log('[CaptchaUtils] 캡챠 정보 전송 완료:', response.status);
+    } catch (error) {
+      console.error('[CaptchaUtils] 캡챠 정보 전송 실패:', error);
     }
   }
 

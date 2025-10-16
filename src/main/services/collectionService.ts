@@ -142,7 +142,7 @@ export class CollectionService {
         }
 
         // 캡챠 화면 대기
-        await CaptchaUtils.handleCaptcha(page);
+        await CaptchaUtils.handleCaptcha(page, usernum);
 
         console.log(`[CollectionService] 상품 처리 시작: ${item.TARGETSTORENAME} (${item.URLPLATFORMS})`);
 

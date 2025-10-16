@@ -133,7 +133,7 @@ export class SourcingService {
 
       for (let i = 0; i < keywords.length; i++) {
         // 캡챠 화면 대기
-        await CaptchaUtils.handleCaptcha(newPage);
+        await CaptchaUtils.handleCaptcha(newPage, config.usernum);
 
         const keyword = keywords[i];
         this.currentKeyword = keyword;
