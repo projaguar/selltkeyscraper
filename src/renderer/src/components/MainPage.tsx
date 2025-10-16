@@ -133,7 +133,7 @@ const MainPage: React.FC = () => {
       try {
         const progressData = await window.api.getCollectionProgress();
         console.log('진행상황 데이터 받음:', progressData);
-        setProgress({ ...progressData, logs: [] });
+        setProgress({ ...progressData, logs: (progressData as any).logs || [] });
       } catch (error) {
         console.error('진행상황 업데이트 오류:', error);
       }
@@ -175,12 +175,19 @@ const MainPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [isSourcing]);
 
-  // 로그 자동 스크롤
+  // 로그 자동 스크롤 (소싱)
   useEffect(() => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [sourcingProgress.logs]);
+
+  // 로그 자동 스크롤 (수집)
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [progress.logs]);
 
   // 캡챠 이벤트 수신
   useEffect(() => {
@@ -208,6 +215,33 @@ const MainPage: React.FC = () => {
       }
     };
   }, []);
+
+  // 캡챠 대기 상태 자동 해제 (백업 로직)
+  useEffect(() => {
+    if (!isWaitingForCaptcha) return;
+
+    const checkCaptchaStatus = async () => {
+      try {
+        // 작업이 진행 중이면 캡챠가 해결된 것으로 간주
+        if (isCollecting || isSourcing) {
+          const progressData = isCollecting
+            ? await window.api.getCollectionProgress()
+            : await window.api.getSourcingProgress();
+
+          // 진행 상황이 업데이트되고 있으면 캡챠가 해결된 것으로 간주
+          if (progressData && (progressData.isRunning || (progressData as any).current > 0)) {
+            console.log('[MainPage] 작업 진행 감지 - 캡챠 대기 화면 자동 해제');
+            setIsWaitingForCaptcha(false);
+          }
+        }
+      } catch (error) {
+        console.error('[MainPage] 캡챠 상태 체크 오류:', error);
+      }
+    };
+
+    const interval = setInterval(checkCaptchaStatus, 2000); // 2초마다 체크
+    return () => clearInterval(interval);
+  }, [isWaitingForCaptcha, isCollecting, isSourcing]);
 
   // 소싱 시작/중지 핸들러
   const handleSourcingToggle = async (): Promise<void> => {
@@ -646,14 +680,15 @@ const MainPage: React.FC = () => {
                       </div>
 
                       {/* 현재 처리 중인 상점 */}
-                      {progress.currentStore && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <div className="flex items-center space-x-2">
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center space-x-2">
+                          {progress.currentStore && (
                             <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                            <span className="text-blue-800 font-medium">진행: {progress.currentStore}</span>
-                          </div>
+                          )}
+                          <span className="text-blue-800 font-medium">진행: {progress.currentStore}</span>
                         </div>
-                      )}
+                      </div>
 
                       {/* 상태 텍스트 */}
                       <div className="text-center">
@@ -663,7 +698,7 @@ const MainPage: React.FC = () => {
                       {/* 로그 표시 영역 */}
                       <div
                         ref={logContainerRef}
-                        className="bg-gray-900 rounded-lg p-4 h-[200px] overflow-y-auto font-mono text-xs"
+                        className="bg-gray-900 rounded-lg p-4 h-[160px] overflow-y-auto font-mono text-xs"
                       >
                         {progress.logs && progress.logs.length > 0 ? (
                           <div className="space-y-1">
