@@ -252,6 +252,19 @@ app.whenReady().then(() => {
     }
   });
 
+  // 캡챠 상태 관리
+  let isWaitingForCaptcha = false;
+
+  ipcMain.handle('set-captcha-waiting', async (_, waiting: boolean) => {
+    isWaitingForCaptcha = waiting;
+    console.log('[IPC] 캡챠 대기 상태 변경:', waiting);
+    return { success: true };
+  });
+
+  ipcMain.handle('get-captcha-waiting', async () => {
+    return isWaitingForCaptcha;
+  });
+
   // 상품 데이터 전송 (CORS 우회용)
   ipcMain.handle('send-product-data', async (_, requestData) => {
     try {

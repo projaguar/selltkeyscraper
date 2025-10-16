@@ -165,7 +165,37 @@ export class CollectionService {
         }
 
         // 캡챠 화면 대기
-        await CaptchaUtils.handleCaptcha(page, usernum);
+        await CaptchaUtils.handleCaptcha(
+          page,
+          usernum,
+          async () => {
+            // 캡챠 감지 시 UI 상태 업데이트
+            console.log('[CollectionService] 캡챠 감지됨 - UI 상태 업데이트');
+            try {
+              // 메인 프로세스에서 직접 상태 업데이트
+              const { BrowserWindow } = await import('electron');
+              const mainWindow = BrowserWindow.getFocusedWindow();
+              if (mainWindow) {
+                mainWindow.webContents.send('captcha-detected');
+              }
+            } catch (error) {
+              console.error('[CollectionService] 캡챠 상태 업데이트 실패:', error);
+            }
+          },
+          async () => {
+            // 캡챠 해결 시 UI 상태 업데이트
+            console.log('[CollectionService] 캡챠 해결됨 - UI 상태 업데이트');
+            try {
+              const { BrowserWindow } = await import('electron');
+              const mainWindow = BrowserWindow.getFocusedWindow();
+              if (mainWindow) {
+                mainWindow.webContents.send('captcha-resolved');
+              }
+            } catch (error) {
+              console.error('[CollectionService] 캡챠 해결 상태 업데이트 실패:', error);
+            }
+          },
+        );
 
         console.log(`[CollectionService] 상품 처리 시작: ${item.TARGETSTORENAME} (${item.URLPLATFORMS})`);
         this.addLog(`상품 처리 시작: ${item.TARGETSTORENAME} (${item.URLPLATFORMS})`);

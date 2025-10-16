@@ -133,7 +133,36 @@ export class SourcingService {
 
       for (let i = 0; i < keywords.length; i++) {
         // 캡챠 화면 대기
-        await CaptchaUtils.handleCaptcha(newPage, config.usernum);
+        await CaptchaUtils.handleCaptcha(
+          newPage,
+          config.usernum,
+          async () => {
+            // 캡챠 감지 시 UI 상태 업데이트
+            console.log('[SourcingService] 캡챠 감지됨 - UI 상태 업데이트');
+            try {
+              const { BrowserWindow } = await import('electron');
+              const mainWindow = BrowserWindow.getFocusedWindow();
+              if (mainWindow) {
+                mainWindow.webContents.send('captcha-detected');
+              }
+            } catch (error) {
+              console.error('[SourcingService] 캡챠 상태 업데이트 실패:', error);
+            }
+          },
+          async () => {
+            // 캡챠 해결 시 UI 상태 업데이트
+            console.log('[SourcingService] 캡챠 해결됨 - UI 상태 업데이트');
+            try {
+              const { BrowserWindow } = await import('electron');
+              const mainWindow = BrowserWindow.getFocusedWindow();
+              if (mainWindow) {
+                mainWindow.webContents.send('captcha-resolved');
+              }
+            } catch (error) {
+              console.error('[SourcingService] 캡챠 해결 상태 업데이트 실패:', error);
+            }
+          },
+        );
 
         const keyword = keywords[i];
         this.currentKeyword = keyword;

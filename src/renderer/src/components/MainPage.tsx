@@ -14,6 +14,7 @@ const MainPage: React.FC = () => {
   const [isKeywordHelperOpen, setIsKeywordHelperOpen] = useState(false);
   const [isNaverLoggedIn, setIsNaverLoggedIn] = useState(false);
   const [isCheckingNaverLogin, setIsCheckingNaverLogin] = useState(true);
+  const [isWaitingForCaptcha, setIsWaitingForCaptcha] = useState(false);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
   // 소싱 관련 상태
@@ -181,6 +182,33 @@ const MainPage: React.FC = () => {
     }
   }, [sourcingProgress.logs]);
 
+  // 캡챠 이벤트 수신
+  useEffect(() => {
+    const handleCaptchaDetected = () => {
+      console.log('[MainPage] 캡챠 감지됨 - 대기 화면 표시');
+      setIsWaitingForCaptcha(true);
+    };
+
+    const handleCaptchaResolved = () => {
+      console.log('[MainPage] 캡챠 해결됨 - 대기 화면 숨김');
+      setIsWaitingForCaptcha(false);
+    };
+
+    // Electron IPC 이벤트 리스너 등록
+    if (window.electron && window.electron.ipcRenderer) {
+      window.electron.ipcRenderer.on('captcha-detected', handleCaptchaDetected);
+      window.electron.ipcRenderer.on('captcha-resolved', handleCaptchaResolved);
+    }
+
+    return () => {
+      // 클린업
+      if (window.electron && window.electron.ipcRenderer) {
+        window.electron.ipcRenderer.removeAllListeners('captcha-detected');
+        window.electron.ipcRenderer.removeAllListeners('captcha-resolved');
+      }
+    };
+  }, []);
+
   // 소싱 시작/중지 핸들러
   const handleSourcingToggle = async (): Promise<void> => {
     try {
@@ -328,6 +356,79 @@ const MainPage: React.FC = () => {
     setSourcingConfig((prev) => ({ ...prev, keywords: keywordString }));
   };
 
+  // 캡챠 대기 화면
+  if (isWaitingForCaptcha) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* 배경 장식 요소들 */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200/30 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200/30 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-100/20 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="w-full max-w-md text-center space-y-8 relative z-10">
+          {/* 로딩 스피너 */}
+          <div className="flex justify-center">
+            <div className="relative">
+              <div className="inline-block animate-spin rounded-full h-20 w-20 border-4 border-blue-200 border-t-blue-600"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* 메시지 */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-center gap-3">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                Selltkey Scraper
+              </h1>
+            </div>
+
+            <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-3">캡챠 해결 대기 중...</h2>
+              <p className="text-gray-600 mb-6">브라우저에서 캡챠를 해결해주세요.</p>
+
+              <div className="space-y-4">
+                <div className="bg-amber-50/80 border border-amber-200/50 rounded-xl p-4 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 text-amber-800 text-sm">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    브라우저에서 캡챠 화면이 표시되었습니다. 캡챠를 완료하면 자동으로 작업이 계속됩니다.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 네이버 로그인 대기 화면
   if (isCheckingNaverLogin || !isNaverLoggedIn) {
     return (
@@ -423,7 +524,7 @@ const MainPage: React.FC = () => {
 
       <div className="max-w-6xl mx-auto relative z-10">
         {/* 헤더 */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-8 px-8 pt-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Selltkey Scraper</h1>
             <p className="text-sm text-gray-600">스마트한 상품 수집 도구</p>
@@ -450,48 +551,50 @@ const MainPage: React.FC = () => {
             }}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2 bg-white/80 backdrop-blur-sm rounded-2xl p-1.5 shadow-lg border border-white/30 h-14">
-              <TabsTrigger
-                value="collection"
-                disabled={isSourcing}
-                className={`rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 font-medium h-12 flex items-center justify-center ${
-                  isSourcing ? 'opacity-50 cursor-not-allowed text-gray-400' : 'text-gray-700 hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                    />
-                  </svg>
-                  상품수집
-                </div>
-              </TabsTrigger>
-              <TabsTrigger
-                value="sourcing"
-                disabled={isCollecting}
-                className={`rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 font-medium h-12 flex items-center justify-center ${
-                  isCollecting ? 'opacity-50 cursor-not-allowed text-gray-400' : 'text-gray-700 hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    />
-                  </svg>
-                  벤치마킹 소싱
-                </div>
-              </TabsTrigger>
-            </TabsList>
+            <div className="px-8">
+              <TabsList className="grid w-full grid-cols-2 bg-white/80 backdrop-blur-sm rounded-3xl h-14">
+                <TabsTrigger
+                  value="collection"
+                  disabled={isSourcing}
+                  className={`rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 font-medium h-12 flex items-center justify-center ${
+                    isSourcing ? 'opacity-50 cursor-not-allowed text-gray-400' : 'text-gray-700 hover:text-gray-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                      />
+                    </svg>
+                    상품수집
+                  </div>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="sourcing"
+                  disabled={isCollecting}
+                  className={`rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 font-medium h-12 flex items-center justify-center ${
+                    isCollecting ? 'opacity-50 cursor-not-allowed text-gray-400' : 'text-gray-700 hover:text-gray-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
+                    </svg>
+                    벤치마킹 소싱
+                  </div>
+                </TabsTrigger>
+              </TabsList>
+            </div>
             {/* 상품수집 탭 */}
-            <TabsContent value="collection" className="mt-4">
+            <TabsContent value="collection" className="mt-4 px-8 pb-8">
               <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
                 <div className="mb-8">
                   <div>
@@ -612,7 +715,7 @@ const MainPage: React.FC = () => {
             </TabsContent>
 
             {/* 벤치마킹 소싱 탭 */}
-            <TabsContent value="sourcing" className="mt-4">
+            <TabsContent value="sourcing" className="mt-4 px-8 pb-8">
               <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
                 <div className="mb-8">
                   <div>

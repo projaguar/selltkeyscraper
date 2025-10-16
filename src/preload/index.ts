@@ -17,6 +17,8 @@ const api = {
   startSourcing: (config: any) => ipcRenderer.invoke('start-sourcing', config),
   stopSourcing: () => ipcRenderer.invoke('stop-sourcing'),
   getSourcingProgress: () => ipcRenderer.invoke('get-sourcing-progress'),
+  setCaptchaWaiting: (waiting: boolean) => ipcRenderer.invoke('set-captcha-waiting', waiting),
+  getCaptchaWaiting: () => ipcRenderer.invoke('get-captcha-waiting'),
 };
 
 // Use `contextBridge` APIs to expose Electron APIs to

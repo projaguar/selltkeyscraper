@@ -4,14 +4,24 @@ import axios from 'axios';
  * 네이버 캡챠 화면 감지 및 해결 대기 유틸리티
  */
 export class CaptchaUtils {
-  static async handleCaptcha(page: Page, userNum: string): Promise<void> {
+  static async handleCaptcha(
+    page: Page,
+    userNum: string,
+    onCaptchaDetected?: () => void,
+    onCaptchaResolved?: () => void,
+  ): Promise<void> {
     const isCaptcha = await CaptchaUtils.isCaptchaPage(page);
 
     if (isCaptcha) {
       // 캡챠 정보 전송
       await CaptchaUtils.sendCaptchaInfo(userNum);
-      const resolved = await CaptchaUtils.waitForCaptchaResolution(page);
-      if (!resolved) {
+      const result = await CaptchaUtils.handleCaptchaIfPresent(
+        page,
+        24 * 60 * 60 * 1000,
+        onCaptchaDetected,
+        onCaptchaResolved,
+      );
+      if (!result.resolved) {
         throw new Error('캡챠 해결 실패');
       }
     }
@@ -167,6 +177,8 @@ export class CaptchaUtils {
   static async handleCaptchaIfPresent(
     page: Page,
     maxWaitTime: number = 24 * 60 * 60 * 1000, // 24시간
+    onCaptchaDetected?: () => void,
+    onCaptchaResolved?: () => void,
   ): Promise<{ isCaptcha: boolean; resolved: boolean; message: string }> {
     try {
       console.log('[CaptchaUtils] 캡챠 화면 확인 중...');
@@ -186,6 +198,11 @@ export class CaptchaUtils {
       console.log('[CaptchaUtils] 사용자가 캡챠를 해결할 때까지 대기 중...');
       console.log('[CaptchaUtils] 현재 URL:', page.url());
 
+      // 캡챠 감지 콜백 호출
+      if (onCaptchaDetected) {
+        onCaptchaDetected();
+      }
+
       // 캡챠 상태 정보 상세 출력
       const captchaStatus = await this.getCaptchaStatus(page);
       console.log('[CaptchaUtils] 캡챠 상태 정보:', captchaStatus);
@@ -200,6 +217,12 @@ export class CaptchaUtils {
 
         if (!stillCaptcha) {
           console.log('[CaptchaUtils] ✅ 캡챠가 해결되었습니다!');
+
+          // 캡챠 해결 콜백 호출
+          if (onCaptchaResolved) {
+            onCaptchaResolved();
+          }
+
           return {
             isCaptcha: true,
             resolved: true,
@@ -238,8 +261,12 @@ export class CaptchaUtils {
    * @param page Puppeteer Page 객체
    * @returns 캡챠 해결 여부
    */
-  static async waitForCaptchaResolution(page: Page): Promise<boolean> {
-    const result = await this.handleCaptchaIfPresent(page);
+  static async waitForCaptchaResolution(
+    page: Page,
+    onCaptchaDetected?: () => void,
+    onCaptchaResolved?: () => void,
+  ): Promise<boolean> {
+    const result = await this.handleCaptchaIfPresent(page, 24 * 60 * 60 * 1000, onCaptchaDetected, onCaptchaResolved);
     return result.resolved;
   }
 
@@ -293,8 +320,13 @@ export class CaptchaUtils {
  * @param maxWaitTime 최대 대기 시간 (밀리초, 기본값: 24시간)
  * @returns 캡챠 해결 여부
  */
-export async function handleCaptcha(page: Page, maxWaitTime: number = 24 * 60 * 60 * 1000): Promise<boolean> {
-  const result = await CaptchaUtils.handleCaptchaIfPresent(page, maxWaitTime);
+export async function handleCaptcha(
+  page: Page,
+  maxWaitTime: number = 24 * 60 * 60 * 1000,
+  onCaptchaDetected?: () => void,
+  onCaptchaResolved?: () => void,
+): Promise<boolean> {
+  const result = await CaptchaUtils.handleCaptchaIfPresent(page, maxWaitTime, onCaptchaDetected, onCaptchaResolved);
   return result.resolved;
 }
 
