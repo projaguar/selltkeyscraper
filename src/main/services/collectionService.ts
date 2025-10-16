@@ -344,33 +344,33 @@ export class CollectionService {
           if (resPost.todayStop) {
             throw new Error('오늘 처리 횟수가 초과 되었습니다.');
           }
-
-          // 랜덤 지연 (5-15초)
-          const randomDelay = Math.floor(Math.random() * (15000 - 5000 + 1)) + 5000;
-          console.log(
-            `[CollectionService] 완료: ${item.TARGETSTORENAME} - 다음 대기 (${Math.floor(randomDelay / 1000)}초)`,
-          );
-
-          // 대기시간 카운팅
-          this.progress.status = `다음 상품 대기 중... (${Math.floor(randomDelay / 1000)}초)`;
-          this.progress.waitTime = Math.floor(randomDelay / 1000);
-          console.log(`[CollectionService] 대기 시작 진행상황:`, this.getProgress());
-
-          // 1초씩 카운트다운
-          for (let i = Math.floor(randomDelay / 1000); i > 0; i--) {
-            if (!this.isRunning) break; // 중단 요청 시 즉시 종료
-            this.progress.waitTime = i;
-            this.progress.status = `다음 상품 대기 중... (${i}초)`;
-            console.log(`[CollectionService] 대기 중 진행상황:`, this.getProgress());
-            await delay(1000);
-          }
-
-          this.progress.waitTime = undefined;
-          this.progress.status = `상품 수집 중... (${this.progress.current}/${this.progress.total})`;
         } catch (error) {
           console.error('[CollectionService] 개별 상품 처리 오류:', error);
           // 오류가 발생해도 다음 상품 처리 계속
         }
+
+        // 랜덤 지연 (5-15초) - try-catch 블록 밖으로 이동
+        const randomDelay = Math.floor(Math.random() * (15000 - 5000 + 1)) + 5000;
+        console.log(
+          `[CollectionService] 완료: ${item.TARGETSTORENAME} - 다음 대기 (${Math.floor(randomDelay / 1000)}초)`,
+        );
+
+        // 대기시간 카운팅
+        this.progress.status = `다음 상품 대기 중... (${Math.floor(randomDelay / 1000)}초)`;
+        this.progress.waitTime = Math.floor(randomDelay / 1000);
+        console.log(`[CollectionService] 대기 시작 진행상황:`, this.getProgress());
+
+        // 1초씩 카운트다운
+        for (let i = Math.floor(randomDelay / 1000); i > 0; i--) {
+          if (!this.isRunning) break; // 중단 요청 시 즉시 종료
+          this.progress.waitTime = i;
+          this.progress.status = `다음 상품 대기 중... (${i}초)`;
+          console.log(`[CollectionService] 대기 중 진행상황:`, this.getProgress());
+          await delay(1000);
+        }
+
+        this.progress.waitTime = undefined;
+        this.progress.status = `상품 수집 중... (${this.progress.current}/${this.progress.total})`;
       }
 
       // ========================================
