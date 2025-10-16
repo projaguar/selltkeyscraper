@@ -349,8 +349,8 @@ export class CollectionService {
           // 오류가 발생해도 다음 상품 처리 계속
         }
 
-        // 랜덤 지연 (5-15초) - try-catch 블록 밖으로 이동
-        const randomDelay = Math.floor(Math.random() * (15000 - 5000 + 1)) + 5000;
+        // 랜덤 지연 (10-15초)
+        const randomDelay = Math.floor(Math.random() * (15000 - 10000 + 1)) + 10000;
         console.log(
           `[CollectionService] 완료: ${item.TARGETSTORENAME} - 다음 대기 (${Math.floor(randomDelay / 1000)}초)`,
         );

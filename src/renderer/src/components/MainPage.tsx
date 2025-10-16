@@ -216,33 +216,6 @@ const MainPage: React.FC = () => {
     };
   }, []);
 
-  // 캡챠 대기 상태 자동 해제 (백업 로직)
-  useEffect(() => {
-    if (!isWaitingForCaptcha) return;
-
-    const checkCaptchaStatus = async () => {
-      try {
-        // 작업이 진행 중이면 캡챠가 해결된 것으로 간주
-        if (isCollecting || isSourcing) {
-          const progressData = isCollecting
-            ? await window.api.getCollectionProgress()
-            : await window.api.getSourcingProgress();
-
-          // 진행 상황이 업데이트되고 있으면 캡챠가 해결된 것으로 간주
-          if (progressData && (progressData.isRunning || (progressData as any).current > 0)) {
-            console.log('[MainPage] 작업 진행 감지 - 캡챠 대기 화면 자동 해제');
-            setIsWaitingForCaptcha(false);
-          }
-        }
-      } catch (error) {
-        console.error('[MainPage] 캡챠 상태 체크 오류:', error);
-      }
-    };
-
-    const interval = setInterval(checkCaptchaStatus, 2000); // 2초마다 체크
-    return () => clearInterval(interval);
-  }, [isWaitingForCaptcha, isCollecting, isSourcing]);
-
   // 소싱 시작/중지 핸들러
   const handleSourcingToggle = async (): Promise<void> => {
     try {
