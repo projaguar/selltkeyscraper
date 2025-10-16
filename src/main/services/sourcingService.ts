@@ -562,6 +562,10 @@ export class SourcingService {
           });
 
           if (!res.ok) {
+            // 418 오류 특별 처리
+            if (res.status === 418) {
+              return { success: false, error: '418', status: 418 };
+            }
             throw new Error(`HTTP error! status: ${res.status}`);
           }
 
@@ -573,6 +577,15 @@ export class SourcingService {
       }, apiUrl);
 
       if (!response.success) {
+        // 418 오류인 경우 특별 처리
+        if (response.error === '418' || response.status === 418) {
+          console.error('[Fetch 데이터 수집] 418 오류: 봇 감지됨');
+          this.addLog('🚨 봇 감지에 걸렸습니다. 작업을 중지합니다.');
+          this.addLog('💡 잠시 쉬었다가 나중에 다시 시도해주세요.');
+          this.isRunning = false; // 작업 중지
+          return { success: false, message: '봇 감지로 인한 작업 중지' };
+        }
+
         console.error('[Fetch 데이터 수집] API 호출 실패:', response.error);
         return { success: false, message: 'API 호출 실패: ' + response.error };
       }

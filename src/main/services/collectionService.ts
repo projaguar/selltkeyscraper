@@ -17,6 +17,7 @@ export interface CollectionResult {
 export class CollectionService {
   private isRunning: boolean = false;
   private currentUsernum: string | null = null;
+  private logs: string[] = [];
   private progress: {
     current: number;
     total: number;
@@ -29,6 +30,21 @@ export class CollectionService {
     currentStore: '',
     status: '대기 중',
   };
+
+  /**
+   * 로그 추가
+   * @param message 로그 메시지
+   */
+  private addLog(message: string): void {
+    const timestamp = new Date().toLocaleTimeString('ko-KR');
+    const logMessage = `[${timestamp}] ${message}`;
+    this.logs.push(logMessage);
+    console.log(logMessage);
+    // 최대 100개의 로그만 유지
+    if (this.logs.length > 100) {
+      this.logs.shift();
+    }
+  }
 
   /**
    * 수집 시작
@@ -59,6 +75,7 @@ export class CollectionService {
       // 수집 상태 설정
       this.isRunning = true;
       this.currentUsernum = usernum;
+      this.logs = []; // 로그 초기화
 
       // 진행상황 초기화
       this.progress = {
@@ -68,13 +85,14 @@ export class CollectionService {
         status: '수집 시작 중...',
       };
 
+      this.addLog('수집 프로세스 시작');
       console.log(`[CollectionService] 수집 시작 - 사용자: ${usernum}`);
       console.log(`[CollectionService] 현재 진행상황:`, this.getProgress());
 
       // ========================================
       // 2단계: 상품목록 조회 및 검증
       // ========================================
-      // TODO: 상태출력정보: 상품목록 조회합니다.
+      this.addLog('상품목록 조회 중...');
       const res = await getGoodsUrlList(usernum);
       console.log(`[CollectionService] 상품목록 조회 결과: ${res.item.length}개`);
 
@@ -91,12 +109,14 @@ export class CollectionService {
       // 진행상황 업데이트 - 상품목록 조회 완료
       this.progress.total = res.item.length;
       this.progress.status = `상품목록 조회 완료 (${res.item.length}개)`;
+      this.addLog(`상품목록 조회 완료: ${res.item.length}개 상품`);
       console.log(`[CollectionService] 상품목록 조회 후 진행상황:`, this.getProgress());
 
       // ========================================
       // 3단계: 브라우저 준비 및 초기화
       // ========================================
       this.progress.status = '브라우저 준비 중...';
+      this.addLog('브라우저 준비 중...');
       console.log('[CollectionService] 브라우저 준비 시작');
 
       const prepareResult = await browserService.prepareForService();
@@ -106,6 +126,7 @@ export class CollectionService {
 
       // 작업 데이터 클리어
       this.progress.status = '작업 데이터 초기화 중...';
+      this.addLog('작업 데이터 초기화 중...');
       console.log('[CollectionService] 작업 데이터 클리어 시작');
 
       // 진행상황 초기화 (total은 유지)
@@ -117,6 +138,7 @@ export class CollectionService {
         status: '작업 준비 완료',
       };
 
+      this.addLog('작업 데이터 초기화 완료');
       console.log('[CollectionService] 작업 데이터 클리어 완료');
 
       // ========================================
@@ -127,6 +149,7 @@ export class CollectionService {
 
       // 상품 수집 시작
       this.progress.status = '상품 수집 시작';
+      this.addLog('상품 수집 시작');
 
       for (const item of res.item) {
         // 작업종료 요청이 있으면 break(종료)
@@ -145,6 +168,7 @@ export class CollectionService {
         await CaptchaUtils.handleCaptcha(page, usernum);
 
         console.log(`[CollectionService] 상품 처리 시작: ${item.TARGETSTORENAME} (${item.URLPLATFORMS})`);
+        this.addLog(`상품 처리 시작: ${item.TARGETSTORENAME} (${item.URLPLATFORMS})`);
 
         // 진행상황 업데이트
         this.progress.current += 1;
@@ -327,6 +351,8 @@ export class CollectionService {
 
       this.progress.status = '수집 완료';
       this.progress.currentStore = '';
+      this.addLog('🎉 전체 수집 프로세스 완료!');
+      this.addLog(`총 ${this.progress.total}개 상품 처리 완료`);
 
       return {
         success: true,
@@ -435,6 +461,7 @@ export class CollectionService {
       progress: this.isRunning
         ? `${this.progress.current}/${this.progress.total} - ${this.progress.currentStore} (${this.progress.status})`
         : '대기 중',
+      logs: this.logs,
     };
 
     console.log('[CollectionService] getProgress 호출됨:', progressData);
