@@ -470,6 +470,14 @@ export class CollectionService {
   }
 
   /**
+   * 현재 수집 상태 확인 (앱 종료용)
+   * @returns boolean
+   */
+  isRunning(): boolean {
+    return this.isRunning;
+  }
+
+  /**
    * 현재 수집 중인 사용자 번호
    * @returns string | null
    */

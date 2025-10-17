@@ -506,6 +506,13 @@ export class BrowserService {
   }
 
   /**
+   * 브라우저 정리 (앱 종료용)
+   */
+  async cleanup(): Promise<void> {
+    await this.cleanupBrowser();
+  }
+
+  /**
    * 브라우저 인스턴스 반환
    * @returns 브라우저 인스턴스 또는 null
    */

@@ -285,6 +285,14 @@ export class SourcingService {
   }
 
   /**
+   * 현재 소싱 상태 확인 (앱 종료용)
+   * @returns boolean
+   */
+  isRunning(): boolean {
+    return this.isRunning;
+  }
+
+  /**
    * 진행 상황 조회
    */
   getProgress(): any {
