@@ -169,6 +169,7 @@ export class CollectionService {
           page,
           usernum,
           async () => {
+            this.addLog(`❌ captcha 화면이 감지되었습니다. 해결될때까지 대기 중...`);
             // 캡챠 감지 시 UI 상태 업데이트
             console.log('[CollectionService] 캡챠 감지됨 - UI 상태 업데이트');
             try {
@@ -184,6 +185,7 @@ export class CollectionService {
           },
           async () => {
             // 캡챠 해결 시 UI 상태 업데이트
+            this.addLog(`✅ captcha 해결됨`);
             console.log('[CollectionService] 캡챠 해결됨 - UI 상태 업데이트');
             try {
               const { BrowserWindow } = await import('electron');

@@ -137,6 +137,7 @@ export class SourcingService {
           newPage,
           config.usernum,
           async () => {
+            this.addLog(`❌ captcha 화면이 감지되었습니다. 해결될때까지 대기 중...`);
             // 캡챠 감지 시 UI 상태 업데이트
             console.log('[SourcingService] 캡챠 감지됨 - UI 상태 업데이트');
             try {
@@ -151,7 +152,7 @@ export class SourcingService {
           },
           async () => {
             // 캡챠 해결 시 UI 상태 업데이트
-            console.log('[SourcingService] 캡챠 해결됨 - UI 상태 업데이트');
+            this.addLog(`✅ captcha 해결됨`);
             try {
               const { BrowserWindow } = await import('electron');
               const mainWindow = BrowserWindow.getFocusedWindow();
@@ -829,8 +830,6 @@ export class SourcingService {
       };
 
       const url = 'https://api.opennest.co.kr/restful/v1/selltkey/relay-naver';
-      console.log('[네이버 데이터 전송] 전송 데이터:', JSON.stringify({ data: resultData, context }));
-
       const response = await axios.post(url, { data: resultData, context });
       const responseResult = response.data;
 

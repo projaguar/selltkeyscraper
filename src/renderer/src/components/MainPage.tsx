@@ -521,7 +521,7 @@ const MainPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 p-3 relative overflow-hidden flex items-center justify-center">
       {/* 배경 장식 요소들 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 right-20 w-64 h-64 bg-blue-200/20 rounded-full blur-3xl"></div>
@@ -529,9 +529,9 @@ const MainPage: React.FC = () => {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-100/10 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="max-w-6xl mx-auto relative z-10">
+      <div className="max-w-6xl mx-auto relative z-10 w-full">
         {/* 헤더 */}
-        <div className="flex justify-between items-center mb-8 px-8 pt-8">
+        <div className="flex justify-between items-center mb-6 px-8 pt-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Selltkey Scraper</h1>
             <p className="text-sm text-gray-600">스마트한 상품 수집 도구</p>
@@ -601,7 +601,7 @@ const MainPage: React.FC = () => {
               </TabsList>
             </div>
             {/* 상품수집 탭 */}
-            <TabsContent value="collection" className="mt-4 px-8 pb-8">
+            <TabsContent value="collection" className="mt-4 px-8 pb-4">
               <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
                 <div className="mb-8">
                   <div>
@@ -723,7 +723,7 @@ const MainPage: React.FC = () => {
             </TabsContent>
 
             {/* 벤치마킹 소싱 탭 */}
-            <TabsContent value="sourcing" className="mt-4 px-8 pb-8">
+            <TabsContent value="sourcing" className="mt-4 px-8 pb-4">
               <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
                 <div className="mb-8">
                   <div>
