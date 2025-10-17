@@ -406,7 +406,7 @@ const MainPage: React.FC = () => {
                 </svg>
               </div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                Selltkey Scraper
+                셀트키스크래퍼
               </h1>
             </div>
 
@@ -533,7 +533,7 @@ const MainPage: React.FC = () => {
         {/* 헤더 */}
         <div className="flex justify-between items-center mb-6 px-8 pt-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Selltkey Scraper</h1>
+            <h1 className="text-3xl font-bold text-gray-900">셀트키스크래퍼</h1>
             <p className="text-sm text-gray-600">스마트한 상품 수집 도구</p>
           </div>
           <Button

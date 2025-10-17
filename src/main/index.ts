@@ -13,7 +13,7 @@ function createWindow(): void {
     height: 1100,
     show: false,
     autoHideMenuBar: true,
-    title: 'Selltkey Scraper',
+    titleBarStyle: 'hidden',
     icon: icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

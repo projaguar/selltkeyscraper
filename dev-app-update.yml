@@ -1,3 +1,3 @@
 provider: generic
-url: https://selltkey.com/auto-updates
+url: https://example.com/auto-updates
 updaterCacheDirName: selltkeyscraper-updater

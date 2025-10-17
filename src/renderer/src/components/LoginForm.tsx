@@ -75,7 +75,7 @@ const LoginForm: React.FC = () => {
         <div className="text-center space-y-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Selltkey Scraper <span className="text-sm text-gray-500">V2</span>
+              셀트키스크래퍼 <span className="text-sm text-gray-500">V2</span>
             </h1>
             <p className="text-gray-600 text-sm">스마트한 상품 수집의 시작</p>
           </div>
