@@ -1,7 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import icon from '../../resources/icon.png?asset';
+// import icon from '../../resources/icon.png?asset';
+import icon from '../../resources/logo_selltkey_red.png?asset';
 import axios from 'axios';
 import { browserService, collectionService, sourcingService } from './services';
 
@@ -12,7 +13,8 @@ function createWindow(): void {
     height: 1100,
     show: false,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    title: 'Selltkey Scraper',
+    icon: icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

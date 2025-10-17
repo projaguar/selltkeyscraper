@@ -1,5 +1,6 @@
 appId: com.electron.app
 productName: selltkeyscraper
+icon: resources/logo_selltkey_red.png
 directories:
   buildResources: build
 files:
