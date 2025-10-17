@@ -292,20 +292,19 @@ app.whenReady().then(() => {
   });
 });
 
-// 앱 종료 시 백그라운드 작업들 정리
-app.on('before-quit', async () => {
-  console.log('[App] 앱 종료 전 백그라운드 작업 정리 중...');
+// 백그라운드 작업 정리 함수
+async function cleanupBackgroundTasks(): Promise<void> {
+  console.log('[App] 백그라운드 작업 정리 중...');
 
   try {
     // 수집 작업 중지
-    if (collectionService.isCollectionRunning()) {
+    if (collectionService.isServiceActive()) {
       console.log('[App] 수집 작업 중지 중...');
       await collectionService.stopCollection();
     }
 
     // 소싱 작업 중지
-    const sourcingProgress = sourcingService.getProgress();
-    if (sourcingProgress.isRunning) {
+    if (sourcingService.isServiceActive()) {
       console.log('[App] 소싱 작업 중지 중...');
       await sourcingService.stopSourcing();
     }
@@ -318,12 +317,14 @@ app.on('before-quit', async () => {
   } catch (error) {
     console.error('[App] 백그라운드 작업 정리 중 오류:', error);
   }
-});
+}
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
+// 앱 종료 시 백그라운드 작업들 정리
+app.on('before-quit', cleanupBackgroundTasks);
+
+// 윈도우 닫기 시 백그라운드 작업들 정리
+app.on('window-all-closed', async () => {
+  await cleanupBackgroundTasks();
   if (process.platform !== 'darwin') {
     app.quit();
   }

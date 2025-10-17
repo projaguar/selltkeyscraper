@@ -288,7 +288,7 @@ export class SourcingService {
    * 현재 소싱 상태 확인 (앱 종료용)
    * @returns boolean
    */
-  isRunning(): boolean {
+  isServiceActive(): boolean {
     return this.isRunning;
   }
 

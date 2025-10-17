@@ -473,7 +473,7 @@ export class CollectionService {
    * 현재 수집 상태 확인 (앱 종료용)
    * @returns boolean
    */
-  isRunning(): boolean {
+  isServiceActive(): boolean {
     return this.isRunning;
   }
 
