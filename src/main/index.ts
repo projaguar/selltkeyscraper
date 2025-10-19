@@ -11,9 +11,9 @@ function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 1100,
+    title: 'Selltkey Scraper',
     show: false,
     autoHideMenuBar: true,
-    titleBarStyle: 'hidden',
     icon: icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

@@ -1,5 +1,7 @@
 import { Page } from 'puppeteer';
 import axios from 'axios';
+import { spawn } from 'child_process';
+import { join } from 'path';
 /**
  * 네이버 캡챠 화면 감지 및 해결 대기 유틸리티
  */
@@ -16,8 +18,13 @@ export class CaptchaUtils {
       if (onCaptchaDetected) {
         onCaptchaDetected();
       }
+
+      // MP3 파일 재생
+      CaptchaUtils.playNotificationSound();
+
       // 캡챠 정보 전송
       await CaptchaUtils.sendCaptchaInfo(userNum);
+
       const result = await CaptchaUtils.handleCaptchaIfPresent(page, 24 * 60 * 60 * 1000);
       if (!result.resolved) {
         throw new Error('캡챠 해결 실패');
@@ -25,6 +32,27 @@ export class CaptchaUtils {
       if (onCaptchaResolved) {
         onCaptchaResolved();
       }
+    }
+  }
+
+  static async playNotificationSound(): Promise<void> {
+    try {
+      // resources 폴더의 MP3 파일 경로
+      const mp3Path = join(__dirname, '../../resources/navercaptcha.mp3');
+      console.log('[CaptchaUtils] MP3 재생 중:', mp3Path);
+
+      // macOS에서 afplay 사용하여 MP3 재생
+      const player = spawn('afplay', [mp3Path]);
+
+      player.on('error', (error) => {
+        console.error('[CaptchaUtils] MP3 재생 오류:', error);
+      });
+
+      player.on('close', (code) => {
+        console.log('[CaptchaUtils] MP3 재생 완료:', code);
+      });
+    } catch (error) {
+      console.error('[CaptchaUtils] MP3 재생 중 오류:', error);
     }
   }
 

@@ -1,5 +1,5 @@
 appId: com.selltkey.app
-productName: selltkeyscraper
+productName: Selltkey Scraper
 icon: resources/logo_selltkey_red.png
 directories:
   buildResources: build
