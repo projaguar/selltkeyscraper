@@ -232,10 +232,28 @@ export class CaptchaUtils {
       // 캡챠 해결 대기
       const startTime = Date.now();
       const checkInterval = 2000; // 2초마다 확인
+      const refreshInterval = 60 * 60 * 1000; // 1시간마다 새로고침
+      let lastRefreshTime = startTime;
 
       while (Date.now() - startTime < maxWaitTime) {
         // 캡챠가 해결되었는지 확인
         const stillCaptcha = await this.isCaptchaPage(page);
+
+        // 1시간마다 페이지 새로고침
+        const currentTime = Date.now();
+        if (currentTime - lastRefreshTime >= refreshInterval) {
+          console.log('[CaptchaUtils] 🔄 1시간 경과, 캡챠 페이지 새로고침 중...');
+          try {
+            await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+            lastRefreshTime = currentTime;
+            console.log('[CaptchaUtils] ✅ 캡챠 페이지 새로고침 완료');
+
+            // 새로고침 후 잠시 대기 (페이지 로딩 완료 대기)
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+          } catch (error) {
+            console.error('[CaptchaUtils] 페이지 새로고침 실패:', error);
+          }
+        }
 
         if (!stillCaptcha) {
           console.log('[CaptchaUtils] ✅ 캡챠가 해결되었습니다!');
@@ -249,8 +267,11 @@ export class CaptchaUtils {
 
         // 현재 URL 확인 (페이지 이동 여부)
         const currentUrl = page.url();
+        const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+        const nextRefreshIn = Math.floor((refreshInterval - (currentTime - lastRefreshTime)) / 1000);
+
         console.log(
-          `[CaptchaUtils] 대기 중... (${Math.floor((Date.now() - startTime) / 1000)}초) - URL: ${currentUrl}`,
+          `[CaptchaUtils] 대기 중... (${elapsedSeconds}초) - URL: ${currentUrl} - 다음 새로고침: ${nextRefreshIn}초 후`,
         );
 
         // 잠시 대기
