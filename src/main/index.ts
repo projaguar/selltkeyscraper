@@ -305,7 +305,7 @@ function forceKillPuppeteerProcesses(): void {
     const platform = process.platform;
 
     if (platform === 'win32') {
-      // Windows: Puppeteer로 생성된 Chrome 프로세스 정리
+      // Windows: Puppeteer로 생성된 Chrome 프로세스만 정리 (--remote-debugging-port 사용)
       exec(
         "wmic process where \"name='chrome.exe' and commandline like '%--remote-debugging-port%'\" delete",
         (error) => {
@@ -313,12 +313,15 @@ function forceKillPuppeteerProcesses(): void {
         },
       );
 
-      // 추가로 남은 Chrome 프로세스 정리 (Selltkey 관련 제외)
-      exec('taskkill /f /im chrome.exe /t /fi "WINDOWTITLE ne Selltkey*"', (error) => {
-        if (error) console.log('[App] 추가 Chrome 프로세스 정리 완료 또는 없음');
-      });
+      // 추가로 Puppeteer 관련 프로세스만 정리 (더 구체적인 필터링)
+      exec(
+        "wmic process where \"name='chrome.exe' and commandline like '%--disable-blink-features%'\" delete",
+        (error) => {
+          if (error) console.log('[App] 추가 Puppeteer Chrome 프로세스 정리 완료 또는 없음');
+        },
+      );
     } else if (platform === 'darwin') {
-      // macOS: Puppeteer로 생성된 Chrome 프로세스 정리
+      // macOS: Puppeteer로 생성된 Chrome 프로세스만 정리
       exec('pkill -f "Google Chrome.*--remote-debugging-port"', (error) => {
         if (error) console.log('[App] Puppeteer Chrome 프로세스 정리 완료 또는 없음');
       });

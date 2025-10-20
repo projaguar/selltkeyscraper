@@ -20,7 +20,7 @@ export class CaptchaUtils {
       }
 
       // MP3 파일 재생
-      CaptchaUtils.playNotificationSound();
+      await CaptchaUtils.playNotificationSound();
 
       // 캡챠 정보 전송
       await CaptchaUtils.sendCaptchaInfo(userNum);
@@ -29,6 +29,7 @@ export class CaptchaUtils {
       if (!result.resolved) {
         throw new Error('캡챠 해결 실패');
       }
+
       if (onCaptchaResolved) {
         onCaptchaResolved();
       }

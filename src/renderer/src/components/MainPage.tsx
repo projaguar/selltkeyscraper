@@ -364,77 +364,77 @@ const MainPage: React.FC = () => {
   };
 
   // 캡챠 대기 화면
-  if (isWaitingForCaptcha) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
-        {/* 배경 장식 요소들 */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200/30 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200/30 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-100/20 rounded-full blur-3xl"></div>
-        </div>
+  // if (isWaitingForCaptcha) {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
+  //       {/* 배경 장식 요소들 */}
+  //       <div className="absolute inset-0 overflow-hidden">
+  //         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200/30 rounded-full blur-3xl"></div>
+  //         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200/30 rounded-full blur-3xl"></div>
+  //         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-100/20 rounded-full blur-3xl"></div>
+  //       </div>
 
-        <div className="w-full max-w-md text-center space-y-8 relative z-10">
-          {/* 로딩 스피너 */}
-          <div className="flex justify-center">
-            <div className="relative">
-              <div className="inline-block animate-spin rounded-full h-20 w-20 border-4 border-blue-200 border-t-blue-600"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
+  //       <div className="w-full max-w-md text-center space-y-8 relative z-10">
+  //         {/* 로딩 스피너 */}
+  //         <div className="flex justify-center">
+  //           <div className="relative">
+  //             <div className="inline-block animate-spin rounded-full h-20 w-20 border-4 border-blue-200 border-t-blue-600"></div>
+  //             <div className="absolute inset-0 flex items-center justify-center">
+  //               <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  //                 <path
+  //                   strokeLinecap="round"
+  //                   strokeLinejoin="round"
+  //                   strokeWidth={2}
+  //                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+  //                 />
+  //               </svg>
+  //             </div>
+  //           </div>
+  //         </div>
 
-          {/* 메시지 */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-center gap-3">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                셀트키스크래퍼
-              </h1>
-            </div>
+  //         {/* 메시지 */}
+  //         <div className="space-y-6">
+  //           <div className="flex items-center justify-center gap-3">
+  //             <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg">
+  //               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  //                 <path
+  //                   strokeLinecap="round"
+  //                   strokeLinejoin="round"
+  //                   strokeWidth={2}
+  //                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+  //                 />
+  //               </svg>
+  //             </div>
+  //             <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+  //               셀트키스크래퍼
+  //             </h1>
+  //           </div>
 
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-3">캡챠 해결 대기 중...</h2>
-              <p className="text-gray-600 mb-6">브라우저에서 캡챠를 해결해주세요.</p>
+  //           <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
+  //             <h2 className="text-xl font-semibold text-gray-900 mb-3">캡챠 해결 대기 중...</h2>
+  //             <p className="text-gray-600 mb-6">브라우저에서 캡챠를 해결해주세요.</p>
 
-              <div className="space-y-4">
-                <div className="bg-amber-50/80 border border-amber-200/50 rounded-xl p-4 backdrop-blur-sm">
-                  <div className="flex items-center gap-2 text-amber-800 text-sm">
-                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    브라우저에서 캡챠 화면이 표시되었습니다. 캡챠를 완료하면 자동으로 작업이 계속됩니다.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  //             <div className="space-y-4">
+  //               <div className="bg-amber-50/80 border border-amber-200/50 rounded-xl p-4 backdrop-blur-sm">
+  //                 <div className="flex items-center gap-2 text-amber-800 text-sm">
+  //                   <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  //                     <path
+  //                       strokeLinecap="round"
+  //                       strokeLinejoin="round"
+  //                       strokeWidth={2}
+  //                       d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+  //                     />
+  //                   </svg>
+  //                   브라우저에서 캡챠 화면이 표시되었습니다. 캡챠를 완료하면 자동으로 작업이 계속됩니다.
+  //                 </div>
+  //               </div>
+  //             </div>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // 네이버 로그인 대기 화면
   if (isCheckingNaverLogin || !isNaverLoggedIn) {
