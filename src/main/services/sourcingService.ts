@@ -269,7 +269,7 @@ export class SourcingService {
       console.error('[소싱] 전체 프로세스 오류:', error);
       this.isRunning = false;
       console.log('[소싱] 소싱 프로세스 중단됨');
-      return { success: false, message: '소싱 프로세스 중 오류 발생' };
+      return { success: false, message: `소싱 프로세스 중 오류 발생 (${error.message || '알 수 없는 오류'})` };
     }
   }
 
