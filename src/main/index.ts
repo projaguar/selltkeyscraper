@@ -5,6 +5,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/logo_selltkey_red.png?asset';
 import axios from 'axios';
 import { browserService, collectionService, sourcingService } from './services';
+import { exec } from 'child_process';
 
 function createWindow(): void {
   // Create the browser window.
@@ -292,6 +293,48 @@ app.whenReady().then(() => {
   });
 });
 
+// 백그라운드 프로세스 정리 (비정상 종료 시 대응)
+function forceKillPuppeteerProcesses(): void {
+  try {
+    console.log('[App] 백그라운드 프로세스 정리 시작...');
+
+    // 1. 먼저 브라우저 서비스를 통해 정상적으로 정리
+    // (이미 cleanupBackgroundTasks에서 browserService.cleanup() 호출됨)
+
+    // 2. 추가로 남은 Puppeteer 관련 프로세스 정리
+    const platform = process.platform;
+
+    if (platform === 'win32') {
+      // Windows: Puppeteer로 생성된 Chrome 프로세스 정리
+      exec(
+        "wmic process where \"name='chrome.exe' and commandline like '%--remote-debugging-port%'\" delete",
+        (error) => {
+          if (error) console.log('[App] Puppeteer Chrome 프로세스 정리 완료 또는 없음');
+        },
+      );
+
+      // 추가로 남은 Chrome 프로세스 정리 (Selltkey 관련 제외)
+      exec('taskkill /f /im chrome.exe /t /fi "WINDOWTITLE ne Selltkey*"', (error) => {
+        if (error) console.log('[App] 추가 Chrome 프로세스 정리 완료 또는 없음');
+      });
+    } else if (platform === 'darwin') {
+      // macOS: Puppeteer로 생성된 Chrome 프로세스 정리
+      exec('pkill -f "Google Chrome.*--remote-debugging-port"', (error) => {
+        if (error) console.log('[App] Puppeteer Chrome 프로세스 정리 완료 또는 없음');
+      });
+
+      // Puppeteer Chromium 프로세스 정리
+      exec('pkill -f "Chromium.*--remote-debugging-port"', (error) => {
+        if (error) console.log('[App] Puppeteer Chromium 프로세스 정리 완료 또는 없음');
+      });
+    }
+
+    console.log('[App] 백그라운드 프로세스 정리 완료');
+  } catch (error) {
+    console.error('[App] 백그라운드 프로세스 정리 오류:', error);
+  }
+}
+
 // 백그라운드 작업 정리 함수
 async function cleanupBackgroundTasks(): Promise<void> {
   console.log('[App] 백그라운드 작업 정리 중...');
@@ -313,6 +356,10 @@ async function cleanupBackgroundTasks(): Promise<void> {
     console.log('[App] 브라우저 서비스 정리 중...');
     await browserService.cleanup();
 
+    // Puppeteer 프로세스 강제 종료 (윈도우 대응)
+    console.log('[App] Puppeteer 프로세스 강제 종료 중...');
+    forceKillPuppeteerProcesses();
+
     console.log('[App] 모든 백그라운드 작업 정리 완료');
   } catch (error) {
     console.error('[App] 백그라운드 작업 정리 중 오류:', error);
@@ -330,5 +377,25 @@ app.on('window-all-closed', async () => {
   }
 });
 
-// In this file you can include the rest of your app's specific main process
+// 비정상 종료 시에도 프로세스 정리 (윈도우 대응)
+process.on('SIGINT', async () => {
+  console.log('[App] SIGINT 신호 받음, 프로세스 정리 중...');
+  await cleanupBackgroundTasks();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('[App] SIGTERM 신호 받음, 프로세스 정리 중...');
+  await cleanupBackgroundTasks();
+  process.exit(0);
+});
+
+// 윈도우에서 Ctrl+C 처리
+process.on('SIGBREAK', async () => {
+  console.log('[App] SIGBREAK 신호 받음, 프로세스 정리 중...');
+  await cleanupBackgroundTasks();
+  process.exit(0);
+});
+
+// In this file you can include the rest of your app's specific main processㅊ
 // code. You can also put them in separate files and require them here.

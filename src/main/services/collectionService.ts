@@ -409,7 +409,7 @@ export class CollectionService {
 
       return {
         success: false,
-        message: '수집 시작 중 오류가 발생했습니다.',
+        message: error.message || '수집 시작 중 오류가 발생했습니다.',
       };
     }
   }

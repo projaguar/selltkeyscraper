@@ -142,6 +142,13 @@ export class BrowserService {
 
           // 안정성을 위한 최소 설정
           '--disable-dev-shm-usage',
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+
+          // 네트워크 안정성 향상
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
           '--no-first-run',
           '--no-default-browser-check',
         ],
@@ -410,10 +417,21 @@ export class BrowserService {
 
       // 네이버 메인 페이지로 이동 (로그인 상태 체크 없이)
       console.log('[BrowserService] 네이버 메인 페이지로 이동...');
-      await page.goto('https://www.naver.com', {
-        waitUntil: 'domcontentloaded',
-        timeout: 10000,
-      });
+
+      try {
+        await page.goto('https://www.naver.com', {
+          waitUntil: 'domcontentloaded',
+          timeout: 30000, // 타임아웃 30초로 증가
+        });
+
+        // 페이지 로딩 완료 대기
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        console.log('[BrowserService] 네이버 메인 페이지 로딩 완료');
+      } catch (error) {
+        console.error('[BrowserService] 네이버 페이지 이동 실패:', error);
+        throw new Error('네이버 페이지로 이동할 수 없습니다. 네트워크 연결을 확인해주세요.');
+      }
 
       // 잠시 대기 후 로그인 버튼 클릭 시도
       console.log('[BrowserService] 로그인 버튼 클릭 시도...');
