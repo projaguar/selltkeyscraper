@@ -363,6 +363,8 @@ const MainPage: React.FC = () => {
     setSourcingConfig((prev) => ({ ...prev, keywords: keywordString }));
   };
 
+  console.log('isWaitingForCaptcha:', isWaitingForCaptcha);
+
   // 캡챠 대기 화면
   // if (isWaitingForCaptcha) {
   //   return (
