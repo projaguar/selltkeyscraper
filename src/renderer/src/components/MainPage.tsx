@@ -134,6 +134,23 @@ const MainPage: React.FC = () => {
         const progressData = await window.api.getCollectionProgress();
         console.log('진행상황 데이터 받음:', progressData);
         setProgress({ ...progressData, logs: (progressData as any).logs || [] });
+
+        // 수집이 완료되었거나 중지된 경우 상태 초기화
+        if (!progressData.isRunning && isCollecting) {
+          console.log('수집 완료/중지 감지, 상태 초기화');
+          setIsCollecting(false);
+          setProgress({
+            isRunning: false,
+            usernum: null,
+            current: 0,
+            total: 0,
+            currentStore: '',
+            status: '대기 중',
+            waitTime: undefined,
+            progress: '대기 중',
+            logs: [],
+          });
+        }
       } catch (error) {
         console.error('진행상황 업데이트 오류:', error);
       }

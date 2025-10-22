@@ -386,6 +386,10 @@ export class CollectionService {
       this.addLog('🎉 전체 수집 프로세스 완료!');
       this.addLog(`총 ${this.progress.total}개 상품 처리 완료`);
 
+      // 수집 완료 시 상태 초기화
+      this.isRunning = false;
+      this.currentUsernum = null;
+
       return {
         success: true,
         message: '상품 수집이 완료되었습니다.',
