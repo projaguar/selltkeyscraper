@@ -1,7 +1,7 @@
 import { Page } from 'puppeteer';
 import axios from 'axios';
 import { spawn } from 'child_process';
-import { join } from 'path';
+
 /**
  * 네이버 캡챠 화면 감지 및 해결 대기 유틸리티
  */
@@ -38,22 +38,83 @@ export class CaptchaUtils {
 
   static async playNotificationSound(): Promise<void> {
     try {
-      // resources 폴더의 MP3 파일 경로
-      const mp3Path = join(__dirname, '../../resources/navercaptcha.mp3');
-      console.log('[CaptchaUtils] MP3 재생 중:', mp3Path);
+      console.log('[CaptchaUtils] TTS 알림 재생 시작');
 
-      // macOS에서 afplay 사용하여 MP3 재생
-      const player = spawn('afplay', [mp3Path]);
+      // 플랫폼별 TTS 사용
+      const platform = process.platform;
+      let ttsProcess: any;
 
-      player.on('error', (error) => {
-        console.error('[CaptchaUtils] MP3 재생 오류:', error);
+      if (platform === 'darwin') {
+        // macOS - say 명령어 사용
+        ttsProcess = spawn('say', ['캡챠가 감지되었습니다. 확인해주세요.']);
+      } else if (platform === 'win32') {
+        // Windows - PowerShell의 Add-Type 사용
+        const ttsScript = `
+          Add-Type -AssemblyName System.Speech
+          $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
+          $synth.Speak("캡챠가 감지되었습니다. 확인해주세요.")
+        `;
+        ttsProcess = spawn('powershell', ['-Command', ttsScript]);
+      } else {
+        // Linux - espeak 사용 (설치되어 있다면)
+        ttsProcess = spawn('espeak', ['-s', '150', '-v', 'ko', '캡챠가 감지되었습니다. 확인해주세요.']);
+      }
+
+      ttsProcess.on('error', (error) => {
+        console.error('[CaptchaUtils] TTS 재생 오류:', error);
+        // TTS 실패 시 시스템 사운드로 대체
+        CaptchaUtils.playSystemSound();
       });
 
-      player.on('close', (code) => {
-        console.log('[CaptchaUtils] MP3 재생 완료:', code);
+      ttsProcess.on('close', (code) => {
+        console.log('[CaptchaUtils] TTS 재생 완료:', code);
       });
+
+      // 타임아웃 설정 (10초)
+      setTimeout(() => {
+        if (ttsProcess && !ttsProcess.killed) {
+          ttsProcess.kill();
+        }
+      }, 10000);
     } catch (error) {
-      console.error('[CaptchaUtils] MP3 재생 중 오류:', error);
+      console.error('[CaptchaUtils] TTS 재생 중 오류:', error);
+      // 오류 발생 시 시스템 사운드로 대체
+      CaptchaUtils.playSystemSound();
+    }
+  }
+
+  /**
+   * 시스템 사운드 재생 (대체 방법)
+   */
+  static playSystemSound(): void {
+    try {
+      console.log('[CaptchaUtils] 시스템 사운드 재생 시작');
+      const platform = process.platform;
+
+      if (platform === 'darwin') {
+        // macOS - 여러 번 비프음
+        for (let i = 0; i < 3; i++) {
+          setTimeout(() => {
+            spawn('osascript', ['-e', 'beep']);
+          }, i * 200);
+        }
+      } else if (platform === 'win32') {
+        // Windows - 여러 번 비프음
+        for (let i = 0; i < 3; i++) {
+          setTimeout(() => {
+            spawn('powershell', ['-c', '[console]::beep(800, 500)']);
+          }, i * 200);
+        }
+      } else {
+        // Linux - 여러 번 비프음
+        for (let i = 0; i < 3; i++) {
+          setTimeout(() => {
+            spawn('paplay', ['/usr/share/sounds/alsa/Front_Left.wav']);
+          }, i * 200);
+        }
+      }
+    } catch (error) {
+      console.error('[CaptchaUtils] 시스템 사운드 재생 실패:', error);
     }
   }
 
