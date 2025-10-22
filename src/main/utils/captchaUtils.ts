@@ -48,11 +48,17 @@ export class CaptchaUtils {
         // macOS - say 명령어 사용
         ttsProcess = spawn('say', ['캡챠가 감지되었습니다. 확인해주세요.']);
       } else if (platform === 'win32') {
-        // Windows - PowerShell의 Add-Type 사용
+        // Windows - 더 강력한 TTS + 시각적 알림
         const ttsScript = `
           Add-Type -AssemblyName System.Speech
           $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
+          $synth.Volume = 100
+          $synth.Rate = 0
           $synth.Speak("캡챠가 감지되었습니다. 확인해주세요.")
+          
+          # 추가 시각적 알림
+          Add-Type -AssemblyName System.Windows.Forms
+          [System.Windows.Forms.MessageBox]::Show("캡챠가 감지되었습니다!", "알림", "OK", "Warning")
         `;
         ttsProcess = spawn('powershell', ['-Command', ttsScript]);
       } else {
@@ -65,6 +71,13 @@ export class CaptchaUtils {
         // TTS 실패 시 시스템 사운드로 대체
         CaptchaUtils.playSystemSound();
       });
+
+      // Windows에서 백그라운드 음악과의 충돌을 피하기 위한 추가 알림
+      if (platform === 'win32') {
+        setTimeout(() => {
+          CaptchaUtils.playSystemSound();
+        }, 2000);
+      }
 
       ttsProcess.on('close', (code) => {
         console.log('[CaptchaUtils] TTS 재생 완료:', code);
@@ -99,12 +112,21 @@ export class CaptchaUtils {
           }, i * 200);
         }
       } else if (platform === 'win32') {
-        // Windows - 여러 번 비프음
-        for (let i = 0; i < 3; i++) {
+        // Windows - 더 강력한 비프음 + 시스템 사운드
+        for (let i = 0; i < 5; i++) {
           setTimeout(() => {
-            spawn('powershell', ['-c', '[console]::beep(800, 500)']);
-          }, i * 200);
+            // 고주파 비프음
+            spawn('powershell', ['-c', '[console]::beep(1000, 300)']);
+          }, i * 150);
         }
+
+        // 추가로 시스템 경고음 재생
+        setTimeout(() => {
+          spawn('powershell', [
+            '-c',
+            '(New-Object Media.SoundPlayer "C:\\Windows\\Media\\Windows Notify.wav").PlaySync()',
+          ]);
+        }, 1000);
       } else {
         // Linux - 여러 번 비프음
         for (let i = 0; i < 3; i++) {
