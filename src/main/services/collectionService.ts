@@ -352,7 +352,7 @@ export class CollectionService {
         }
 
         // 랜덤 지연 (10-15초)
-        const randomDelay = Math.floor(Math.random() * (20000 - 15000 + 1)) + 10000;
+        const randomDelay = Math.floor(Math.random() * (20000 - 15000 + 1)) + 15000;
         console.log(
           `[CollectionService] 완료: ${item.TARGETSTORENAME} - 다음 대기 (${Math.floor(randomDelay / 1000)}초)`,
         );
