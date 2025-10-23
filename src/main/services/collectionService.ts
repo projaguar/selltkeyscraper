@@ -7,6 +7,7 @@ import axios from 'axios';
 import { browserService } from './browserService';
 import { CaptchaUtils } from '../utils/captchaUtils';
 import { BlockDetectionUtils } from '../utils/blockDetectionUtils';
+import { AntiDetectionUtils } from '../utils/antiDetectionUtils';
 
 export interface CollectionResult {
   success: boolean;
@@ -351,11 +352,22 @@ export class CollectionService {
           // 오류가 발생해도 다음 상품 처리 계속
         }
 
-        // 랜덤 지연 (10-15초)
+        // 랜덤 지연 (15-20초)
         const randomDelay = Math.floor(Math.random() * (20000 - 15000 + 1)) + 15000;
         console.log(
           `[CollectionService] 완료: ${item.TARGETSTORENAME} - 다음 대기 (${Math.floor(randomDelay / 1000)}초)`,
         );
+
+        // 30% 확률로 자연스러운 스크롤 수행
+        if (Math.random() < 0.3) {
+          console.log(`[CollectionService] 자연스러운 스크롤 수행`);
+          try {
+            await AntiDetectionUtils.simulateScroll(page);
+            console.log(`[CollectionService] 스크롤 시뮬레이션 완료`);
+          } catch (error) {
+            console.error(`[CollectionService] 스크롤 시뮬레이션 오류:`, error);
+          }
+        }
 
         // 대기시간 카운팅
         this.progress.status = `다음 상품 대기 중... (${Math.floor(randomDelay / 1000)}초)`;

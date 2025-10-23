@@ -664,7 +664,7 @@ const MainPage: React.FC = () => {
                             <div
                               className={`h-3 rounded-full transition-all duration-1000 ${progress.waitTime && progress.waitTime > 0 ? 'bg-amber-500' : 'bg-gray-300'}`}
                               style={{
-                                width: `${progress.waitTime && progress.waitTime > 0 ? (progress.waitTime / 15) * 100 : 0}%`,
+                                width: `${progress.waitTime && progress.waitTime > 0 ? Math.min((progress.waitTime / 20) * 100, 100) : 0}%`,
                               }}
                             ></div>
                           </div>
