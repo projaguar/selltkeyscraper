@@ -11,7 +11,7 @@ function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1200,
-    height: 1100,
+    height: 900,
     title: 'Selltkey Scraper',
     show: false,
     autoHideMenuBar: true,

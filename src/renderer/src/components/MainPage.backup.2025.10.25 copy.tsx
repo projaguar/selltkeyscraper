@@ -566,121 +566,426 @@ const MainPage: React.FC = () => {
 
         {/* 탭 영역 */}
         <div className="mb-6">
-          {/* 상품수집 탭 */}
-
-          <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
-            <div className="mb-8">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">상품수집</h2>
-                <p className="text-gray-600 text-sm">스마트한 상품 정보 수집 및 관리</p>
-              </div>
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              // 진행 중일 때는 탭 전환 방지
+              if (isCollecting || isSourcing) {
+                return;
+              }
+              setActiveTab(value);
+            }}
+            className="w-full"
+          >
+            <div className="px-8">
+              <TabsList className="grid w-full grid-cols-2 bg-white/80 backdrop-blur-sm rounded-3xl h-14">
+                <TabsTrigger
+                  value="collection"
+                  disabled={isSourcing}
+                  className={`rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 font-medium h-12 flex items-center justify-center ${
+                    isSourcing ? 'opacity-50 cursor-not-allowed text-gray-400' : 'text-gray-700 hover:text-gray-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                      />
+                    </svg>
+                    상품수집
+                  </div>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="sourcing"
+                  disabled={isCollecting}
+                  className={`rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 font-medium h-12 flex items-center justify-center ${
+                    isCollecting ? 'opacity-50 cursor-not-allowed text-gray-400' : 'text-gray-700 hover:text-gray-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
+                    </svg>
+                    벤치마킹 소싱
+                  </div>
+                </TabsTrigger>
+              </TabsList>
             </div>
-
-            <div className="space-y-8">
-              {/* 진행 상황 표시 (항상 표시) */}
-              <div className="bg-gradient-to-br from-gray-50/80 to-blue-50/50 backdrop-blur-sm border border-white/40 rounded-2xl p-8 shadow-lg">
-                <div className="mb-6">
-                  <h3 className="text-xl font-bold text-gray-900">진행상황</h3>
+            {/* 상품수집 탭 */}
+            <TabsContent value="collection" className="mt-4 px-8 pb-4">
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
+                <div className="mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">상품수집</h2>
+                    <p className="text-gray-600 text-sm">스마트한 상품 정보 수집 및 관리</p>
+                  </div>
                 </div>
-                <div className="space-y-4">
-                  {/* 프로그래스바들 (한 줄에 1:1 배치) */}
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* 진행률 바 */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm text-gray-600">
-                        <span>진행률</span>
-                        <span>{progress.total > 0 ? `${progress.current}/${progress.total}` : '0/0'}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div
-                          className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                          style={{
-                            width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%`,
-                          }}
-                        ></div>
-                      </div>
+
+                <div className="space-y-8">
+                  {/* 진행 상황 표시 (항상 표시) */}
+                  <div className="bg-gradient-to-br from-gray-50/80 to-blue-50/50 backdrop-blur-sm border border-white/40 rounded-2xl p-8 shadow-lg">
+                    <div className="mb-6">
+                      <h3 className="text-xl font-bold text-gray-900">진행상황</h3>
                     </div>
-
-                    {/* 대기시간 프로그래스바 */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm text-gray-600">
-                        <span>대기시간</span>
-                        <span>{progress.waitTime && progress.waitTime > 0 ? `${progress.waitTime}초` : '0초'}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div
-                          className={`h-3 rounded-full transition-all duration-1000 ${progress.waitTime && progress.waitTime > 0 ? 'bg-amber-500' : 'bg-gray-300'}`}
-                          style={{
-                            width: `${progress.waitTime && progress.waitTime > 0 ? Math.min((progress.waitTime / 20) * 100, 100) : 0}%`,
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 현재 처리 중인 상점 */}
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center space-x-2">
-                      {progress.currentStore && (
-                        <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                      )}
-                      <span className="text-blue-800 font-medium">진행: {progress.currentStore}</span>
-                    </div>
-                  </div>
-
-                  {/* 상태 텍스트 */}
-                  <div className="text-center">
-                    <p className="text-blue-600 font-medium">{progress.status}</p>
-                  </div>
-
-                  {/* 로그 표시 영역 */}
-                  <div
-                    ref={logContainerRef}
-                    className="bg-gray-900 rounded-lg p-4 h-[160px] overflow-y-auto font-mono text-xs"
-                  >
-                    {progress.logs && progress.logs.length > 0 ? (
-                      <div className="space-y-1">
-                        {progress.logs.map((log, index) => (
-                          <div key={index} className="text-green-400 whitespace-pre-wrap break-words">
-                            {log}
+                    <div className="space-y-4">
+                      {/* 프로그래스바들 (한 줄에 1:1 배치) */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* 진행률 바 */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm text-gray-600">
+                            <span>진행률</span>
+                            <span>{progress.total > 0 ? `${progress.current}/${progress.total}` : '0/0'}</span>
                           </div>
-                        ))}
+                          <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div
+                              className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                              style={{
+                                width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+
+                        {/* 대기시간 프로그래스바 */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm text-gray-600">
+                            <span>대기시간</span>
+                            <span>{progress.waitTime && progress.waitTime > 0 ? `${progress.waitTime}초` : '0초'}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div
+                              className={`h-3 rounded-full transition-all duration-1000 ${progress.waitTime && progress.waitTime > 0 ? 'bg-amber-500' : 'bg-gray-300'}`}
+                              style={{
+                                width: `${progress.waitTime && progress.waitTime > 0 ? Math.min((progress.waitTime / 20) * 100, 100) : 0}%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
                       </div>
+
+                      {/* 현재 처리 중인 상점 */}
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center space-x-2">
+                          {progress.currentStore && (
+                            <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          )}
+                          <span className="text-blue-800 font-medium">진행: {progress.currentStore}</span>
+                        </div>
+                      </div>
+
+                      {/* 상태 텍스트 */}
+                      <div className="text-center">
+                        <p className="text-blue-600 font-medium">{progress.status}</p>
+                      </div>
+
+                      {/* 로그 표시 영역 */}
+                      <div
+                        ref={logContainerRef}
+                        className="bg-gray-900 rounded-lg p-4 h-[160px] overflow-y-auto font-mono text-xs"
+                      >
+                        {progress.logs && progress.logs.length > 0 ? (
+                          <div className="space-y-1">
+                            {progress.logs.map((log, index) => (
+                              <div key={index} className="text-green-400 whitespace-pre-wrap break-words">
+                                {log}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-gray-500 text-center py-8">
+                            {isCollecting ? '로그 대기 중...' : '수집 작업이 시작되면 진행상황이 여기에 표시됩니다'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 버튼 영역 (수집 중지/시작 버튼) */}
+                  <div className="w-full">
+                    {isCollecting ? (
+                      <Button
+                        onClick={handleCollectionToggle}
+                        className="w-full h-14 text-lg rounded-2xl font-semibold transition-all duration-200 transform hover:-translate-y-0.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl"
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                          수집 중지
+                        </div>
+                      </Button>
                     ) : (
-                      <div className="text-gray-500 text-center py-8">
-                        {isCollecting ? '로그 대기 중...' : '수집 작업이 시작되면 진행상황이 여기에 표시됩니다'}
-                      </div>
+                      <Button
+                        onClick={handleCollectionToggle}
+                        className="w-full h-14 text-lg rounded-2xl font-semibold transition-all duration-200 transform hover:-translate-y-0.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl"
+                      >
+                        수집 실행
+                      </Button>
                     )}
                   </div>
                 </div>
               </div>
+            </TabsContent>
 
-              {/* 버튼 영역 (수집 중지/시작 버튼) */}
-              <div className="w-full">
-                {isCollecting ? (
-                  <Button
-                    onClick={handleCollectionToggle}
-                    className="w-full h-14 text-lg rounded-2xl font-semibold transition-all duration-200 transform hover:-translate-y-0.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl"
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      수집 중지
+            {/* 벤치마킹 소싱 탭 */}
+            <TabsContent value="sourcing" className="mt-4 px-8 pb-4">
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
+                <div className="mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">벤치마킹 소싱</h2>
+                    <p className="text-gray-600 text-sm">경쟁사 상품 분석 및 스마트 소싱</p>
+                  </div>
+                </div>
+
+                <div className="space-y-8">
+                  {/* 진행 상황 표시 (소싱 중일 때) */}
+                  {isSourcing && (
+                    <div className="bg-gradient-to-br from-gray-50/80 to-blue-50/50 backdrop-blur-sm border border-white/40 rounded-2xl p-8 shadow-lg">
+                      <div className="mb-6">
+                        <h3 className="text-xl font-bold text-gray-900">진행상황</h3>
+                      </div>
+                      <div className="space-y-4">
+                        {/* 진행률 바 */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm text-gray-600">
+                            <span>키워드 진행률</span>
+                            <span>
+                              {sourcingProgress.currentKeywordIndex}/{sourcingProgress.totalKeywords}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              style={{
+                                width: `${(sourcingProgress.currentKeywordIndex / sourcingProgress.totalKeywords) * 100}%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                        {/* 현재 진행 중인 키워드 */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-center space-x-2">
+                            <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                            <span className="text-blue-800 font-medium">
+                              현재 키워드: {sourcingProgress.currentKeyword}
+                            </span>
+                          </div>
+                        </div>
+                        {/* 로그 표시 영역 */}
+                        <div
+                          ref={logContainerRef}
+                          className="bg-gray-900 rounded-lg p-4 h-[200px] overflow-y-auto font-mono text-xs"
+                        >
+                          {sourcingProgress.logs.length > 0 ? (
+                            <div className="space-y-1">
+                              {sourcingProgress.logs.map((log, index) => (
+                                <div key={index} className="text-green-400 whitespace-pre-wrap break-words">
+                                  {log}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-gray-500 text-center py-8">로그 대기 중...</div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleCollectionToggle}
-                    className="w-full h-14 text-lg rounded-2xl font-semibold transition-all duration-200 transform hover:-translate-y-0.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl"
-                  >
-                    수집 실행
-                  </Button>
-                )}
+                  )}
+
+                  {/* 입력 폼 (소싱 중이 아닐 때만 표시) */}
+                  {!isSourcing && (
+                    <>
+                      {/* 금액 설정 */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <Label htmlFor="minAmount" className="text-sm font-medium text-gray-700">
+                            최저금액
+                          </Label>
+                          <Input
+                            id="minAmount"
+                            type="text"
+                            placeholder="최저금액을 입력하세요"
+                            className="h-12 rounded-xl border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200"
+                            value={sourcingConfig.minAmount}
+                            onChange={(e) => setSourcingConfig((prev) => ({ ...prev, minAmount: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-3">
+                          <Label htmlFor="maxAmount" className="text-sm font-medium text-gray-700">
+                            최고금액
+                          </Label>
+                          <Input
+                            id="maxAmount"
+                            type="text"
+                            placeholder="최고금액을 입력하세요"
+                            className="h-12 rounded-xl border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200"
+                            value={sourcingConfig.maxAmount}
+                            onChange={(e) => setSourcingConfig((prev) => ({ ...prev, maxAmount: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      {/* 키워드 */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="keywords" className="text-sm font-medium text-gray-700">
+                            키워드
+                          </Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-xs px-3 py-1 h-7 border-gray-300 text-gray-600 hover:bg-gray-50"
+                            onClick={handleKeywordHelperOpen}
+                          >
+                            키워드 도우미
+                          </Button>
+                        </div>
+                        <textarea
+                          id="keywords"
+                          value={sourcingConfig.keywords}
+                          onChange={(e) => setSourcingConfig((prev) => ({ ...prev, keywords: e.target.value }))}
+                          placeholder="키워드를 입력하세요 (콤마로 구분하여 여러 개 입력 가능)"
+                          rows={4}
+                          className="w-full rounded-xl border border-gray-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-white/50 transition-all duration-200 p-3 text-sm resize-none"
+                        />
+                      </div>
+
+                      {/* 옵션 체크박스 */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                          <svg
+                            className="w-5 h-5 text-indigo-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          포함 옵션
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
+                            <Checkbox
+                              id="includeNaver"
+                              className="border-gray-300 rounded-md"
+                              checked={sourcingConfig.includeNaver}
+                              onCheckedChange={(checked) =>
+                                setSourcingConfig((prev) => ({ ...prev, includeNaver: !!checked }))
+                              }
+                            />
+                            <Label htmlFor="includeNaver" className="text-sm font-medium text-gray-700 cursor-pointer">
+                              네이버 포함
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
+                            <Checkbox
+                              id="includeAuction"
+                              className="border-gray-300 rounded-md"
+                              checked={sourcingConfig.includeAuction}
+                              onCheckedChange={(checked) =>
+                                setSourcingConfig((prev) => ({ ...prev, includeAuction: !!checked }))
+                              }
+                            />
+                            <Label
+                              htmlFor="includeAuction"
+                              className="text-sm font-medium text-gray-700 cursor-pointer"
+                            >
+                              옥션 포함
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
+                            <Checkbox
+                              id="includeBest"
+                              className="border-gray-300 rounded-md"
+                              checked={sourcingConfig.includeBest}
+                              onCheckedChange={(checked) =>
+                                setSourcingConfig((prev) => ({ ...prev, includeBest: !!checked }))
+                              }
+                            />
+                            <Label htmlFor="includeBest" className="text-sm font-medium text-gray-700 cursor-pointer">
+                              베스트 상품 포함
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-3 p-3 bg-white/50 rounded-xl border border-gray-200 hover:bg-white/70 transition-all duration-200">
+                            <Checkbox
+                              id="includeNew"
+                              className="border-gray-300 rounded-md"
+                              checked={sourcingConfig.includeNew}
+                              onCheckedChange={(checked) =>
+                                setSourcingConfig((prev) => ({ ...prev, includeNew: !!checked }))
+                              }
+                            />
+                            <Label htmlFor="includeNew" className="text-sm font-medium text-gray-700 cursor-pointer">
+                              신상품 포함
+                            </Label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={handleSourcingToggle}
+                        className="w-full h-14 text-lg font-semibold rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white"
+                      >
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
+                          </svg>
+                          소싱 시작
+                        </div>
+                      </Button>
+                    </>
+                  )}
+
+                  {/* 소싱 중지 버튼 (소싱 중일 때만 표시) */}
+                  {isSourcing && (
+                    <div className="w-full">
+                      <Button
+                        onClick={handleSourcingToggle}
+                        className="w-full h-14 text-lg rounded-2xl font-semibold transition-all duration-200 transform hover:-translate-y-0.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl"
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                          소싱 중지
+                        </div>
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* 키워드 도우미 다이얼로그 */}
