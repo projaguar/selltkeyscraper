@@ -1,44 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@renderer/components/ui/button';
-import { Input } from '@renderer/components/ui/input';
-import { Label } from '@renderer/components/ui/label';
-import { Checkbox } from '@renderer/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs';
 import { useAuth } from '../contexts/AuthContext';
-import { KeywordHelper } from './KeywordHelper';
 
 const MainPage: React.FC = () => {
   const { logout, userInfo } = useAuth();
-  const [activeTab, setActiveTab] = useState('collection');
   const [isCollecting, setIsCollecting] = useState(false);
-  const [isKeywordHelperOpen, setIsKeywordHelperOpen] = useState(false);
   const [isNaverLoggedIn, setIsNaverLoggedIn] = useState(false);
   const [isCheckingNaverLogin, setIsCheckingNaverLogin] = useState(true);
   const [isWaitingForCaptcha, setIsWaitingForCaptcha] = useState(false);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
-  // 소싱 관련 상태
-  const [isSourcing, setIsSourcing] = useState(false);
-  const [sourcingConfig, setSourcingConfig] = useState({
-    minAmount: '0',
-    maxAmount: '99999999',
-    keywords: '',
-    includeNaver: true,
-    includeAuction: false,
-    includeBest: true,
-    includeNew: false,
-  });
-  const [sourcingProgress, setSourcingProgress] = useState<{
-    currentKeyword: string;
-    currentKeywordIndex: number;
-    totalKeywords: number;
-    logs: string[];
-  }>({
-    currentKeyword: '',
-    currentKeywordIndex: 0,
-    totalKeywords: 0,
-    logs: [],
-  });
   const [progress, setProgress] = useState<{
     isRunning: boolean;
     usernum: string | null;
@@ -159,46 +130,6 @@ const MainPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [isCollecting]);
 
-  // 소싱 상태 실시간 업데이트
-  useEffect(() => {
-    console.log('소싱 상태 useEffect 실행, isSourcing:', isSourcing);
-    if (!isSourcing) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const data = await window.api.getSourcingProgress();
-        console.log('소싱 진행상황 데이터 받음:', data);
-
-        // 진행 상황 업데이트
-        setSourcingProgress({
-          currentKeyword: data.currentKeyword || '',
-          currentKeywordIndex: data.currentKeywordIndex || 0,
-          totalKeywords: data.totalKeywords || 0,
-          logs: data.logs || [],
-        });
-
-        // 소싱이 완료되었으면 UI 상태 업데이트
-        if (!data.isRunning && isSourcing) {
-          console.log('소싱 완료 감지, UI 상태 업데이트');
-          setIsSourcing(false);
-          // 키워드 필드 클리어
-          setSourcingConfig((prev) => ({ ...prev, keywords: '' }));
-        }
-      } catch (error) {
-        console.error('소싱 진행상황 업데이트 오류:', error);
-      }
-    }, 500); // 0.5초마다 체크 (더 빠른 업데이트)
-
-    return () => clearInterval(interval);
-  }, [isSourcing]);
-
-  // 로그 자동 스크롤 (소싱)
-  useEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
-  }, [sourcingProgress.logs]);
-
   // 로그 자동 스크롤 (수집)
   useEffect(() => {
     if (logContainerRef.current) {
@@ -232,64 +163,6 @@ const MainPage: React.FC = () => {
       }
     };
   }, []);
-
-  // 소싱 시작/중지 핸들러
-  const handleSourcingToggle = async (): Promise<void> => {
-    try {
-      if (isSourcing) {
-        // 소싱 중지
-        console.log('소싱 중지 요청');
-        const result = await window.api.stopSourcing();
-        if (result.success) {
-          setIsSourcing(false);
-          console.log('소싱 중지 성공:', result.message);
-        } else {
-          alert(`소싱 중지 실패: ${result.message}`);
-        }
-      } else {
-        // 소싱 시작
-        console.log('소싱 시작 요청:', sourcingConfig);
-
-        // 설정 유효성 검사
-        if (!sourcingConfig.keywords.trim()) {
-          alert('키워드를 입력해주세요.');
-          return;
-        }
-        if (!sourcingConfig.minAmount || !sourcingConfig.maxAmount) {
-          alert('최저/최고 금액을 입력해주세요.');
-          return;
-        }
-        if (!sourcingConfig.includeNaver && !sourcingConfig.includeAuction) {
-          alert('최소 하나의 플랫폼을 선택해주세요.');
-          return;
-        }
-
-        // UI 상태를 즉시 업데이트
-        setIsSourcing(true);
-
-        // usernum을 포함한 설정 전달
-        const sourcingConfigWithUser = {
-          ...sourcingConfig,
-          usernum: userInfo?.usernum || '',
-        };
-
-        const result = await window.api.startSourcing(sourcingConfigWithUser);
-        console.log('소싱 시작 결과:', result);
-
-        if (result.success) {
-          console.log('소싱 시작 성공:', result.message);
-        } else {
-          // 실패 시 상태 되돌리기
-          setIsSourcing(false);
-          alert(`소싱 시작 실패: ${result.message}`);
-        }
-      }
-    } catch (error) {
-      console.error('소싱 작업 처리 오류:', error);
-      setIsSourcing(false);
-      alert('소싱 작업 처리 중 오류가 발생했습니다.');
-    }
-  };
 
   const handleCollectionToggle = async (): Promise<void> => {
     // 1. 유저번호 확인
@@ -365,19 +238,6 @@ const MainPage: React.FC = () => {
       console.error('수집 작업 처리 오류:', error);
       alert('작업 처리 중 오류가 발생했습니다.');
     }
-  };
-
-  const handleKeywordHelperOpen = () => {
-    setIsKeywordHelperOpen(true);
-  };
-
-  const handleKeywordHelperClose = () => {
-    setIsKeywordHelperOpen(false);
-  };
-
-  const handleSelectKeywords = (selectedKeywords: string[]) => {
-    const keywordString = selectedKeywords.join(', ');
-    setSourcingConfig((prev) => ({ ...prev, keywords: keywordString }));
   };
 
   console.log('isWaitingForCaptcha:', isWaitingForCaptcha);
@@ -682,14 +542,6 @@ const MainPage: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {/* 키워드 도우미 다이얼로그 */}
-        <KeywordHelper
-          isOpen={isKeywordHelperOpen}
-          onClose={handleKeywordHelperClose}
-          onSelectKeywords={handleSelectKeywords}
-          userNum={userInfo?.usernum || ''}
-        />
       </div>
     </div>
   );
