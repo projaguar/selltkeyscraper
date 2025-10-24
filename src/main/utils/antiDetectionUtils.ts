@@ -410,6 +410,141 @@ export class AntiDetectionUtils {
       console.error('[AntiDetection] 탭 전환 시 크롤링 회피 작업 오류:', error);
     }
   }
+
+  /**
+   * 랜덤 링크 클릭 후 백 (자연스러운 사용자 행동 시뮬레이션)
+   * 새창으로 뜨는 링크는 제외하고 3초 이내로 완료
+   */
+  static async simulateRandomLinkClick(page: Page): Promise<void> {
+    try {
+      console.log('[AntiDetection] 랜덤 링크 클릭 시뮬레이션 시작');
+
+      // 현재 URL 저장 (백을 위해)
+      const currentUrl = page.url();
+
+      // 새창으로 뜨지 않는 링크들 찾기
+      const clickableLinks = await page.evaluate(() => {
+        const links = Array.from(document.querySelectorAll('a[href]'));
+        const validLinks: Array<{ href: string; text: string; selector: string }> = [];
+
+        links.forEach((link: HTMLAnchorElement, index: number) => {
+          const href = link.href;
+          const text = link.textContent?.trim() || '';
+
+          // 새창으로 뜨는 링크 제외
+          const isNewWindow =
+            link.target === '_blank' ||
+            link.target === '_new' ||
+            link.getAttribute('onclick')?.includes('window.open') ||
+            link.getAttribute('onclick')?.includes('_blank');
+
+          // 유효한 링크인지 확인
+          const isValidLink =
+            href &&
+            href !== '#' &&
+            href !== 'javascript:void(0)' &&
+            href !== 'javascript:;' &&
+            !href.startsWith('mailto:') &&
+            !href.startsWith('tel:') &&
+            !isNewWindow &&
+            text.length > 0;
+
+          if (isValidLink) {
+            // 더 구체적인 셀렉터 생성
+            const selector = `a:nth-of-type(${index + 1})[href="${href}"]`;
+            validLinks.push({ href, text, selector });
+          }
+        });
+
+        return validLinks;
+      });
+
+      if (clickableLinks.length === 0) {
+        console.log('[AntiDetection] 클릭 가능한 링크가 없습니다.');
+        return;
+      }
+
+      // 랜덤하게 링크 선택
+      const randomIndex = Math.floor(Math.random() * clickableLinks.length);
+      const selectedLink = clickableLinks[randomIndex];
+
+      console.log(`[AntiDetection] 선택된 링크: ${selectedLink.text} (${selectedLink.href})`);
+      console.log(`[AntiDetection] 사용할 셀렉터: ${selectedLink.selector}`);
+
+      // 링크 클릭 전 URL 저장
+      const beforeUrl = page.url();
+      console.log(`[AntiDetection] 클릭 전 URL: ${beforeUrl}`);
+
+      // 여러 방법으로 링크 클릭 시도
+      try {
+        // 방법 1: href로 클릭
+        await page.click(`a[href="${selectedLink.href}"]`);
+        console.log(`[AntiDetection] href로 링크 클릭 완료`);
+      } catch (error) {
+        console.log(`[AntiDetection] href 클릭 실패, 셀렉터로 재시도: ${error}`);
+        try {
+          // 방법 2: 셀렉터로 클릭
+          await page.click(selectedLink.selector);
+          console.log(`[AntiDetection] 셀렉터로 링크 클릭 완료`);
+        } catch (error2) {
+          console.log(`[AntiDetection] 셀렉터 클릭 실패, evaluate로 재시도: ${error2}`);
+          // 방법 3: evaluate로 직접 클릭
+          await page.evaluate((href) => {
+            const link = document.querySelector(`a[href="${href}"]`) as HTMLAnchorElement;
+            if (link) {
+              link.click();
+            }
+          }, selectedLink.href);
+          console.log(`[AntiDetection] evaluate로 링크 클릭 완료`);
+        }
+      }
+
+      // 페이지 이동 대기 (최대 3초)
+      try {
+        await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 3000 });
+        const afterUrl = page.url();
+        console.log(`[AntiDetection] 클릭 후 URL: ${afterUrl}`);
+
+        if (beforeUrl === afterUrl) {
+          console.log(`[AntiDetection] 페이지 이동이 감지되지 않았습니다. 강제로 페이지 이동 시도`);
+          await page.goto(selectedLink.href, { waitUntil: 'domcontentloaded', timeout: 3000 });
+        }
+      } catch (error) {
+        console.log('[AntiDetection] 페이지 이동 대기 시간 초과, 강제 이동 시도');
+        try {
+          await page.goto(selectedLink.href, { waitUntil: 'domcontentloaded', timeout: 3000 });
+        } catch (gotoError) {
+          console.error('[AntiDetection] 강제 페이지 이동 실패:', gotoError);
+        }
+      }
+
+      // 잠시 대기 (0.5-1초)
+      const waitTime = Math.floor(Math.random() * 500) + 500;
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+
+      // 백 버튼 클릭
+      await page.goBack({ waitUntil: 'domcontentloaded', timeout: 2000 });
+
+      // 원래 페이지로 돌아왔는지 확인
+      const backUrl = page.url();
+      if (backUrl === currentUrl) {
+        console.log('[AntiDetection] 랜덤 링크 클릭 시뮬레이션 완료');
+      } else {
+        console.log('[AntiDetection] 백 후 URL이 다릅니다. 원래 페이지로 이동');
+        await page.goto(currentUrl, { waitUntil: 'domcontentloaded', timeout: 2000 });
+      }
+    } catch (error) {
+      console.error('[AntiDetection] 랜덤 링크 클릭 시뮬레이션 오류:', error);
+
+      // 오류 발생 시 원래 페이지로 돌아가기 시도
+      try {
+        const currentUrl = page.url();
+        await page.goto(currentUrl, { waitUntil: 'domcontentloaded', timeout: 2000 });
+      } catch (backError) {
+        console.error('[AntiDetection] 원래 페이지로 돌아가기 실패:', backError);
+      }
+    }
+  }
 }
 
 export default AntiDetectionUtils;

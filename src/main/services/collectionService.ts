@@ -359,7 +359,8 @@ export class CollectionService {
         );
 
         // 30% 확률로 자연스러운 스크롤 수행
-        if (Math.random() < 0.3) {
+        const randomValue = Math.random();
+        if (randomValue < 0.3) {
           console.log(`[CollectionService] 자연스러운 스크롤 수행`);
           try {
             await AntiDetectionUtils.simulateScroll(page);

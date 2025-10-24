@@ -140,6 +140,7 @@ export class BrowserService {
           // 일반적인 브라우저 설정
           `--window-size=${defaultConfig.width},${defaultConfig.height}`,
           '--lang=ko-KR',
+          '--accept-lang=ko-KR,ko,en-US,en',
 
           // 안정성을 위한 최소 설정
           '--disable-dev-shm-usage',
@@ -183,6 +184,13 @@ export class BrowserService {
         userDataDir: defaultConfig.userDataDir,
         defaultViewport: null,
         ignoreDefaultArgs: ['--enable-automation'],
+        // 한글 로케일 설정
+        env: {
+          ...process.env,
+          LANG: 'ko_KR.UTF-8',
+          LC_ALL: 'ko_KR.UTF-8',
+          LC_CTYPE: 'ko_KR.UTF-8',
+        },
       };
 
       // Windows에서 Chrome 경로가 발견되면 사용
