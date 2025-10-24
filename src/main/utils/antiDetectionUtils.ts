@@ -545,6 +545,336 @@ export class AntiDetectionUtils {
       }
     }
   }
+
+  /**
+   * 봇 디텍션 데이터 정리 (세션, 쿠키, 로컬스토리지에서 봇 감지 관련 데이터 제거)
+   */
+  static async cleanupBotDetectionData(page: Page): Promise<void> {
+    try {
+      console.log('[AntiDetection] 봇 디텍션 데이터 정리 시작');
+
+      // 1. 쿠키에서 봇 감지 관련 데이터 제거
+      await page.evaluate(() => {
+        const cookiesToRemove = [
+          // 일반적인 봇 감지 쿠키들
+          'bot_detection',
+          'automation_detected',
+          'crawler_detected',
+          'scraper_detected',
+          'selenium_detected',
+          'puppeteer_detected',
+          'headless_detected',
+          'webdriver_detected',
+          'automation_flag',
+          'bot_flag',
+          'crawler_flag',
+          'scraper_flag',
+          'selenium_flag',
+          'puppeteer_flag',
+          'headless_flag',
+          'webdriver_flag',
+          // 추가 봇 감지 관련 쿠키들
+          'anti_bot',
+          'bot_check',
+          'crawler_check',
+          'automation_check',
+          'selenium_check',
+          'puppeteer_check',
+          'headless_check',
+          'webdriver_check',
+          // 타임스탬프 기반 봇 감지
+          'visit_timestamp',
+          'page_load_time',
+          'interaction_time',
+          'mouse_movement',
+          'scroll_behavior',
+          'click_pattern',
+          'typing_speed',
+          'human_behavior',
+          // 세션 기반 봇 감지
+          'session_fingerprint',
+          'browser_fingerprint',
+          'device_fingerprint',
+          'user_fingerprint',
+          'behavioral_fingerprint',
+          'interaction_fingerprint',
+          'navigation_fingerprint',
+          'timing_fingerprint',
+          // 추가 감지 메커니즘
+          'captcha_attempts',
+          'failed_attempts',
+          'suspicious_activity',
+          'unusual_behavior',
+          'automation_signature',
+          'bot_signature',
+          'crawler_signature',
+          'scraper_signature',
+          'selenium_signature',
+          'puppeteer_signature',
+          'headless_signature',
+          'webdriver_signature',
+        ];
+
+        cookiesToRemove.forEach((cookieName) => {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname};`;
+        });
+
+        console.log('[AntiDetection] 봇 감지 관련 쿠키 제거 완료');
+      });
+
+      // 2. 로컬스토리지에서 봇 감지 관련 데이터 제거
+      await page.evaluate(() => {
+        const storageKeysToRemove = [
+          // 일반적인 봇 감지 키들
+          'bot_detection',
+          'automation_detected',
+          'crawler_detected',
+          'scraper_detected',
+          'selenium_detected',
+          'puppeteer_detected',
+          'headless_detected',
+          'webdriver_detected',
+          'automation_flag',
+          'bot_flag',
+          'crawler_flag',
+          'scraper_flag',
+          'selenium_flag',
+          'puppeteer_flag',
+          'headless_flag',
+          'webdriver_flag',
+          // 추가 봇 감지 관련 키들
+          'anti_bot',
+          'bot_check',
+          'crawler_check',
+          'automation_check',
+          'selenium_check',
+          'puppeteer_check',
+          'headless_check',
+          'webdriver_check',
+          // 행동 패턴 관련
+          'visit_timestamp',
+          'page_load_time',
+          'interaction_time',
+          'mouse_movement',
+          'scroll_behavior',
+          'click_pattern',
+          'typing_speed',
+          'human_behavior',
+          // 지문 관련
+          'session_fingerprint',
+          'browser_fingerprint',
+          'device_fingerprint',
+          'user_fingerprint',
+          'behavioral_fingerprint',
+          'interaction_fingerprint',
+          'navigation_fingerprint',
+          'timing_fingerprint',
+          // 추가 감지 메커니즘
+          'captcha_attempts',
+          'failed_attempts',
+          'suspicious_activity',
+          'unusual_behavior',
+          'automation_signature',
+          'bot_signature',
+          'crawler_signature',
+          'scraper_signature',
+          'selenium_signature',
+          'puppeteer_signature',
+          'headless_signature',
+          'webdriver_signature',
+        ];
+
+        storageKeysToRemove.forEach((key) => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
+
+        console.log('[AntiDetection] 봇 감지 관련 로컬스토리지 데이터 제거 완료');
+      });
+
+      // 3. 세션스토리지에서 봇 감지 관련 데이터 제거
+      await page.evaluate(() => {
+        const sessionKeysToRemove = [
+          'bot_detection',
+          'automation_detected',
+          'crawler_detected',
+          'scraper_detected',
+          'selenium_detected',
+          'puppeteer_detected',
+          'headless_detected',
+          'webdriver_detected',
+          'automation_flag',
+          'bot_flag',
+          'crawler_flag',
+          'scraper_flag',
+          'selenium_flag',
+          'puppeteer_flag',
+          'headless_flag',
+          'webdriver_flag',
+          'anti_bot',
+          'bot_check',
+          'crawler_check',
+          'automation_check',
+          'selenium_check',
+          'puppeteer_check',
+          'headless_check',
+          'webdriver_check',
+          'visit_timestamp',
+          'page_load_time',
+          'interaction_time',
+          'mouse_movement',
+          'scroll_behavior',
+          'click_pattern',
+          'typing_speed',
+          'human_behavior',
+          'session_fingerprint',
+          'browser_fingerprint',
+          'device_fingerprint',
+          'user_fingerprint',
+          'behavioral_fingerprint',
+          'interaction_fingerprint',
+          'navigation_fingerprint',
+          'timing_fingerprint',
+          'captcha_attempts',
+          'failed_attempts',
+          'suspicious_activity',
+          'unusual_behavior',
+          'automation_signature',
+          'bot_signature',
+          'crawler_signature',
+          'scraper_signature',
+          'selenium_signature',
+          'puppeteer_signature',
+          'headless_signature',
+          'webdriver_signature',
+        ];
+
+        sessionKeysToRemove.forEach((key) => {
+          sessionStorage.removeItem(key);
+        });
+
+        console.log('[AntiDetection] 봇 감지 관련 세션스토리지 데이터 제거 완료');
+      });
+
+      // 4. IndexedDB에서 봇 감지 관련 데이터 제거
+      await page.evaluate(() => {
+        const dbNames = ['bot_detection', 'automation_data', 'crawler_data', 'scraper_data'];
+
+        dbNames.forEach((dbName) => {
+          try {
+            const deleteRequest = indexedDB.deleteDatabase(dbName);
+            deleteRequest.onsuccess = () => {
+              console.log(`[AntiDetection] IndexedDB ${dbName} 삭제 완료`);
+            };
+            deleteRequest.onerror = () => {
+              console.log(`[AntiDetection] IndexedDB ${dbName} 삭제 실패`);
+            };
+          } catch (error) {
+            console.log(`[AntiDetection] IndexedDB ${dbName} 삭제 중 오류:`, error);
+          }
+        });
+      });
+
+      // 5. 웹 워커에서 봇 감지 관련 데이터 제거
+      await page.evaluate(() => {
+        // 웹 워커 관련 전역 변수들 정리
+        if (typeof window !== 'undefined') {
+          const workerKeys = [
+            'botDetectionWorker',
+            'automationWorker',
+            'crawlerWorker',
+            'scraperWorker',
+            'seleniumWorker',
+            'puppeteerWorker',
+            'headlessWorker',
+            'webdriverWorker',
+          ];
+
+          workerKeys.forEach((key) => {
+            if (window[key as any]) {
+              try {
+                const worker = window[key as any] as unknown as Worker;
+                if (worker && typeof worker.terminate === 'function') {
+                  worker.terminate();
+                }
+                delete window[key as any];
+              } catch (error) {
+                console.log(`[AntiDetection] 웹 워커 ${key} 정리 중 오류:`, error);
+              }
+            }
+          });
+        }
+      });
+
+      // 6. 추가적인 봇 감지 관련 전역 변수들 정리
+      await page.evaluate(() => {
+        const globalKeysToRemove = [
+          'botDetection',
+          'automationDetection',
+          'crawlerDetection',
+          'scraperDetection',
+          'seleniumDetection',
+          'puppeteerDetection',
+          'headlessDetection',
+          'webdriverDetection',
+          'antiBot',
+          'botCheck',
+          'crawlerCheck',
+          'automationCheck',
+          'seleniumCheck',
+          'puppeteerCheck',
+          'headlessCheck',
+          'webdriverCheck',
+          'visitTimestamp',
+          'pageLoadTime',
+          'interactionTime',
+          'mouseMovement',
+          'scrollBehavior',
+          'clickPattern',
+          'typingSpeed',
+          'humanBehavior',
+          'sessionFingerprint',
+          'browserFingerprint',
+          'deviceFingerprint',
+          'userFingerprint',
+          'behavioralFingerprint',
+          'interactionFingerprint',
+          'navigationFingerprint',
+          'timingFingerprint',
+          'captchaAttempts',
+          'failedAttempts',
+          'suspiciousActivity',
+          'unusualBehavior',
+          'automationSignature',
+          'botSignature',
+          'crawlerSignature',
+          'scraperSignature',
+          'seleniumSignature',
+          'puppeteerSignature',
+          'headlessSignature',
+          'webdriverSignature',
+        ];
+
+        globalKeysToRemove.forEach((key) => {
+          if (typeof window !== 'undefined' && window[key as any]) {
+            try {
+              delete window[key as any];
+            } catch (error) {
+              console.log(`[AntiDetection] 전역 변수 ${key} 정리 중 오류:`, error);
+            }
+          }
+        });
+
+        console.log('[AntiDetection] 봇 감지 관련 전역 변수 정리 완료');
+      });
+
+      console.log('[AntiDetection] 봇 디텍션 데이터 정리 완료');
+    } catch (error) {
+      console.error('[AntiDetection] 봇 디텍션 데이터 정리 중 오류:', error);
+    }
+  }
 }
 
 export default AntiDetectionUtils;

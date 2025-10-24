@@ -641,7 +641,18 @@ export class BrowserService {
         console.log('[BrowserService] 이미 www.naver.com에 있음');
       }
 
-      // 3. 네이버 로그인 상태 확인
+      // 3. 봇 디텍션 데이터 정리
+      console.log('[BrowserService] 봇 디텍션 데이터 정리 시작');
+      try {
+        const { AntiDetectionUtils } = await import('../utils/antiDetectionUtils');
+        await AntiDetectionUtils.cleanupBotDetectionData(currentPage);
+        console.log('[BrowserService] 봇 디텍션 데이터 정리 완료');
+      } catch (error) {
+        console.error('[BrowserService] 봇 디텍션 데이터 정리 중 오류:', error);
+        // 오류가 발생해도 계속 진행
+      }
+
+      // 4. 네이버 로그인 상태 확인
       console.log('[BrowserService] 네이버 로그인 상태 확인');
       const isNaverLoggedIn = await this.checkNaverLoginStatus();
       if (!isNaverLoggedIn) {

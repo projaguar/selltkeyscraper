@@ -359,15 +359,28 @@ export class CollectionService {
         );
 
         // 30% 확률로 자연스러운 스크롤 수행
-        const randomValue = Math.random();
-        if (randomValue < 0.3) {
-          console.log(`[CollectionService] 자연스러운 스크롤 수행`);
-          try {
-            await AntiDetectionUtils.simulateScroll(page);
-            console.log(`[CollectionService] 스크롤 시뮬레이션 완료`);
-          } catch (error) {
-            console.error(`[CollectionService] 스크롤 시뮬레이션 오류:`, error);
-          }
+        // const randomValue = Math.random();
+        // if (randomValue < 0.3) {
+        //   console.log(`[CollectionService] 자연스러운 스크롤 수행`);
+        //   try {
+        //     await AntiDetectionUtils.simulateScroll(page);
+        //     console.log(`[CollectionService] 스크롤 시뮬레이션 완료`);
+        //   } catch (error) {
+        //     console.error(`[CollectionService] 스크롤 시뮬레이션 오류:`, error);
+        //   }
+        // }
+
+        // 봇 디텍션 데이터 정리
+        this.progress.status = '봇 감지 데이터 정리 중...';
+        this.addLog('봇 감지 데이터 정리 중...');
+        console.log('[CollectionService] 봇 디텍션 데이터 정리 시작');
+        try {
+          await AntiDetectionUtils.cleanupBotDetectionData(page);
+          this.addLog('봇 감지 데이터 정리 완료');
+          console.log('[CollectionService] 봇 디텍션 데이터 정리 완료');
+        } catch (error) {
+          console.error('[CollectionService] 봇 디텍션 데이터 정리 중 오류:', error);
+          this.addLog('봇 감지 데이터 정리 중 오류 발생 (계속 진행)');
         }
 
         // 대기시간 카운팅
