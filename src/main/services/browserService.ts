@@ -151,6 +151,24 @@ export class BrowserService {
           '--disable-renderer-backgrounding',
           '--no-first-run',
           '--no-default-browser-check',
+
+          // 예전 캡챠 해결 방법 ------------------------------------------------------------
+          '--disable-autofill-keyboard-accessory-view',
+          '--disable-autofill-credential-provider',
+          '--accept-lang=ko-KR,ko', // 한국어를 허용하는 언어로 설정
+          '--incognito', // 시크릿 모드 활성화
+          '--disable-web-security', // 웹 보안 비활성화
+          '--disable-features=VizDisplayCompositor', // 일부 기능 비활성화로 봇 감지 우회
+          '--disable-blink-features=AutomationControlled', // 자동화 감지 비활성화
+          '--disable-extensions', // 확장 프로그램 비활성화
+          '--disable-plugins', // 플러그인 비활성화
+          '--disable-images', // 이미지 로딩 비활성화 (속도 향상)
+          '--disable-javascript-harmony-shipping', // 일부 JavaScript 기능 비활성화
+          '--disable-features=TranslateUI', // 번역 UI 비활성화
+          '--disable-ipc-flooding-protection', // IPC 플러딩 보호 비활성화
+          '--force-incognito', // 강제 시크릿 모드
+          '--incognito-mode', // 시크릿 모드 강제 적용
+          '--single-process', // 단일 프로세스 모드로 시크릿 모드 강제
         ],
         userDataDir: defaultConfig.userDataDir,
         defaultViewport: null,
