@@ -3,9 +3,9 @@
  * 여러 서비스에서 공통으로 사용하는 브라우저 인스턴스 관리
  */
 
-import puppeteer, { Browser, Page } from 'puppeteer';
-// import puppeteer from 'puppeteer-extra';
-// import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { Browser, Page } from 'puppeteer';
 import { execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -26,8 +26,9 @@ export class BrowserService {
 
   private constructor() {
     // 싱글톤 패턴을 위한 private 생성자
-    // Stealth 플러그인 제거 - 일반 puppeteer 사용
-    console.log('[BrowserService] 일반 Puppeteer 모드로 초기화 (Stealth 플러그인 미사용)');
+    // Stealth 플러그인 적용
+    puppeteer.use(StealthPlugin());
+    console.log('[BrowserService] Stealth 플러그인 적용된 Puppeteer 모드로 초기화');
   }
 
   /**
@@ -151,6 +152,33 @@ export class BrowserService {
           '--disable-renderer-backgrounding',
           '--no-first-run',
           '--no-default-browser-check',
+
+          // 추가 설정들
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--disable-extensions',
+          '--disable-plugins',
+          '--disable-default-apps',
+          '--disable-sync',
+          '--disable-translate',
+          '--safebrowsing-disable-auto-update',
+          '--disable-client-side-phishing-detection',
+          '--disable-component-update',
+          '--disable-domain-reliability',
+          '--disable-features=AudioServiceOutOfProcess',
+          '--disable-hang-monitor',
+          '--disable-prompt-on-repost',
+          '--disable-background-networking',
+          '--disable-breakpad',
+          '--disable-component-extensions-with-background-pages',
+          '--disable-features=TranslateUI,BlinkGenPropertyTrees',
+          '--disable-ipc-flooding-protection',
+          '--disable-sync',
+          '--force-color-profile=srgb',
+          '--metrics-recording-only',
+          '--password-store=basic',
+          '--use-mock-keychain',
+          '--window-size=1200,800',
         ],
         userDataDir: defaultConfig.userDataDir,
         defaultViewport: null,
