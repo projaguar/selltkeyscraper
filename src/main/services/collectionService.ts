@@ -569,7 +569,45 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
  * 옥션 상품 목록 수집
  */
 const getAuctionGoodsList = async (url: string, page: any): Promise<any> => {
-  await page.goto(url);
+  // 자연스러운 네비게이션: DOM에 링크 주입 후 마우스 클릭 시뮬레이션
+  await page.evaluate((targetUrl) => {
+    // 기존 네비게이션 링크가 있는지 확인
+    const existingLink = document.querySelector(`a[href="${targetUrl}"]`);
+    if (existingLink) {
+      return; // 이미 링크가 있으면 그대로 사용
+    }
+
+    // 숨겨진 링크 생성 및 DOM에 추가
+    const link = document.createElement('a');
+    link.href = targetUrl;
+    link.style.position = 'absolute';
+    link.style.left = '-9999px';
+    link.style.opacity = '0';
+    link.style.pointerEvents = 'none';
+    link.setAttribute('data-natural-navigation', 'true');
+    document.body.appendChild(link);
+  }, url);
+
+  // 자연스러운 마우스 움직임 후 링크 클릭
+  await AntiDetectionUtils.simulateMouseMovement(page);
+  await AntiDetectionUtils.naturalDelay(500, 1000);
+
+  // 링크 클릭 (여러 방법 시도)
+  try {
+    await page.click(`a[href="${url}"]`);
+  } catch (error) {
+    // 대안: evaluate로 직접 클릭
+    await page.evaluate((targetUrl) => {
+      const link = document.querySelector(`a[href="${targetUrl}"]`) as HTMLAnchorElement;
+      if (link) {
+        link.click();
+      }
+    }, url);
+  }
+
+  // 페이지 로딩 대기
+  await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 });
+
   const textContent = await page.evaluate(() => {
     const element = document.getElementById('__NEXT_DATA__');
     return element?.textContent ?? null;
