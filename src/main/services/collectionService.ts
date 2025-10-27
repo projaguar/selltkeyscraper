@@ -562,28 +562,30 @@ const getGoodsUrlList = async (userNum: string): Promise<any> => {
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ========================================
-// 상품 수집 유틸리티 함수들
+// 네비게이션 유틸리티 함수들
 // ========================================
 
 /**
- * 옥션 상품 목록 수집
+ * 자연스러운 페이지 네비게이션 (DOM 링크 주입 + 클릭 시뮬레이션)
+ * page.goto() 대신 사용하여 봇 감지 회피
  */
-const getAuctionGoodsList = async (url: string, page: any): Promise<any> => {
+const navigateToUrlNaturally = async (url: string, page: any): Promise<void> => {
   // 자연스러운 네비게이션: DOM에 링크 주입 후 마우스 클릭 시뮬레이션
   await page.evaluate((targetUrl) => {
-    // 기존 네비게이션 링크가 있는지 확인
-    const existingLink = document.querySelector(`a[href="${targetUrl}"]`);
-    if (existingLink) {
-      return; // 이미 링크가 있으면 그대로 사용
-    }
-
-    // 숨겨진 링크 생성 및 DOM에 추가
+    // 링크 생성 및 DOM에 추가 (보이는 위치에)
     const link = document.createElement('a');
     link.href = targetUrl;
-    link.style.position = 'absolute';
-    link.style.left = '-9999px';
-    link.style.opacity = '0';
-    link.style.pointerEvents = 'none';
+    link.style.position = 'fixed';
+    link.style.top = '10px';
+    link.style.right = '10px';
+    link.style.zIndex = '9999';
+    link.style.backgroundColor = '#007bff';
+    link.style.color = 'white';
+    link.style.padding = '5px 10px';
+    link.style.borderRadius = '3px';
+    link.style.textDecoration = 'none';
+    link.style.fontSize = '12px';
+    link.textContent = 'Navigate';
     link.setAttribute('data-natural-navigation', 'true');
     document.body.appendChild(link);
   }, url);
@@ -607,6 +609,18 @@ const getAuctionGoodsList = async (url: string, page: any): Promise<any> => {
 
   // 페이지 로딩 대기
   await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 });
+};
+
+// ========================================
+// 상품 수집 유틸리티 함수들
+// ========================================
+
+/**
+ * 옥션 상품 목록 수집
+ */
+const getAuctionGoodsList = async (url: string, page: any): Promise<any> => {
+  // 자연스러운 네비게이션 사용
+  await navigateToUrlNaturally(url, page);
 
   const textContent = await page.evaluate(() => {
     const element = document.getElementById('__NEXT_DATA__');
@@ -678,7 +692,8 @@ const getAuctionGoodsList = async (url: string, page: any): Promise<any> => {
 const getNaverGoodsList = async (url: string, page: any): Promise<any> => {
   try {
     console.log(`[CollectionService] 네이버 상품 페이지 접근: ${url}`);
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // 자연스러운 네비게이션 사용
+    await navigateToUrlNaturally(url, page);
 
     // CAPTCHA 체크 및 대기
     let isCaptchaPage = false;
