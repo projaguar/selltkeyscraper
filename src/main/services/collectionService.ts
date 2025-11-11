@@ -85,7 +85,6 @@ export class CollectionService {
         currentStore: '',
         status: '수집 시작 중...',
       };
-
       this.addLog('수집 프로세스 시작');
       console.log(`[CollectionService] 수집 시작 - 사용자: ${usernum}`);
       console.log(`[CollectionService] 현재 진행상황:`, this.getProgress());
@@ -95,8 +94,7 @@ export class CollectionService {
       // ========================================
       this.addLog('상품목록 조회 중...');
       const res = await getGoodsUrlList(usernum);
-      console.log(`[CollectionService] 상품목록 조회 결과: ${res.item.length}개`);
-
+      console.log(`[CollectionService] 상품 수집 URL 조회 결과: ${res.item.length}개`);
       // 오늘 처리 횟수 초과 체크
       if (res.todayStop) {
         throw new Error('오늘 처리 횟수가 초과 되었습니다.');
@@ -104,13 +102,13 @@ export class CollectionService {
 
       // 처리할 상품이 있는지 체크
       if (res.item.length === 0) {
-        throw new Error('처리할 상품이 없습니다.');
+        throw new Error('처리할 상점 URL 정보가 없습니다.');
       }
 
       // 진행상황 업데이트 - 상품목록 조회 완료
       this.progress.total = res.item.length;
       this.progress.status = `상품목록 조회 완료 (${res.item.length}개)`;
-      this.addLog(`상품목록 조회 완료: ${res.item.length}개 상품`);
+      this.addLog(`URL 목록 조회 완료: ${res.item.length}개 URL`);
       console.log(`[CollectionService] 상품목록 조회 후 진행상황:`, this.getProgress());
 
       // ========================================
@@ -124,12 +122,10 @@ export class CollectionService {
       if (!prepareResult.success) {
         throw new Error(prepareResult.message);
       }
-
       // 작업 데이터 클리어
       this.progress.status = '작업 데이터 초기화 중...';
       this.addLog('작업 데이터 초기화 중...');
       console.log('[CollectionService] 작업 데이터 클리어 시작');
-
       // 진행상황 초기화 (total은 유지)
       const totalCount = this.progress.total;
       this.progress = {
@@ -138,7 +134,6 @@ export class CollectionService {
         currentStore: '',
         status: '작업 준비 완료',
       };
-
       this.addLog('작업 데이터 초기화 완료');
       console.log('[CollectionService] 작업 데이터 클리어 완료');
 
@@ -147,7 +142,6 @@ export class CollectionService {
       // ========================================
       const insertUrl = res.inserturl;
       const page = browserService.getCurrentPage();
-
       // 상품 수집 시작
       this.progress.status = '상품 수집 시작';
       this.addLog('상품 수집 시작');
@@ -158,13 +152,11 @@ export class CollectionService {
           console.log('[CollectionService] 수집 작업이 중단되었습니다.');
           break;
         }
-
         // 블럭 페이지 체크
         const isBlockedPage = await BlockDetectionUtils.isBlockedPage(page);
         if (isBlockedPage) {
           throw new Error('블럭 페이지 감지');
         }
-
         // 캡챠 화면 대기
         await CaptchaUtils.handleCaptcha(
           page,
@@ -199,7 +191,6 @@ export class CollectionService {
             }
           },
         );
-
         console.log(`[CollectionService] 상품 처리 시작: ${item.TARGETSTORENAME} (${item.URLPLATFORMS})`);
         this.addLog(`상품 처리 시작: ${item.TARGETSTORENAME} (${item.URLPLATFORMS})`);
 
@@ -208,7 +199,6 @@ export class CollectionService {
         this.progress.currentStore = item.TARGETSTORENAME;
         this.progress.status = `${item.URLPLATFORMS} 상품 수집 중... (${this.progress.current}/${this.progress.total})`;
         console.log(`[CollectionService] 상품 처리 진행상황 업데이트:`, this.getProgress());
-
         // 결과 객체 초기화
         const result: any = {
           urlnum: item.URLNUM,
@@ -259,7 +249,6 @@ export class CollectionService {
           } else if (item.URLPLATFORMS === 'NAVER') {
             console.log('[CollectionService] NAVER 상품 처리 시작');
             const data = await getNaverGoodsList(item.TARGETURL, page);
-
             // 데이터 유효성 검사
             if (!data) {
               result.result.error = true;
@@ -347,8 +336,18 @@ export class CollectionService {
           if (resPost.todayStop) {
             throw new Error('오늘 처리 횟수가 초과 되었습니다.');
           }
+
+          const transmittedCount = Array.isArray(result.result.list) ? result.result.list.length : 0;
+          this.addLog(
+            `결과 전송 완료 - ${item.TARGETSTORENAME} (${item.URLPLATFORMS}) (${this.progress.current}/${this.progress.total}, 전송 ${transmittedCount}건)`,
+          );
         } catch (error) {
           console.error('[CollectionService] 개별 상품 처리 오류:', error);
+          const transmittedCount = Array.isArray(result.result.list) ? result.result.list.length : 0;
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.addLog(
+            `❗ 결과 전송 실패 - ${item.URLPLATFORMS} (${this.progress.current}/${this.progress.total}, 전송 ${transmittedCount}건) - ${errorMessage}`,
+          );
           // 오류가 발생해도 다음 상품 처리 계속
         }
 
@@ -372,15 +371,12 @@ export class CollectionService {
 
         // 봇 디텍션 데이터 정리
         this.progress.status = '봇 감지 데이터 정리 중...';
-        this.addLog('봇 감지 데이터 정리 중...');
         console.log('[CollectionService] 봇 디텍션 데이터 정리 시작');
         try {
           await AntiDetectionUtils.cleanupBotDetectionData(page);
-          this.addLog('봇 감지 데이터 정리 완료');
           console.log('[CollectionService] 봇 디텍션 데이터 정리 완료');
         } catch (error) {
           console.error('[CollectionService] 봇 디텍션 데이터 정리 중 오류:', error);
-          this.addLog('봇 감지 데이터 정리 중 오류 발생 (계속 진행)');
         }
 
         // 대기시간 카운팅
@@ -393,7 +389,6 @@ export class CollectionService {
           if (!this.isRunning) break; // 중단 요청 시 즉시 종료
           this.progress.waitTime = i;
           this.progress.status = `다음 상품 대기 중... (${i}초)`;
-          console.log(`[CollectionService] 대기 중 진행상황:`, this.getProgress());
           await delay(1000);
         }
 
@@ -534,7 +529,6 @@ export class CollectionService {
       logs: this.logs,
     };
 
-    console.log('[CollectionService] getProgress 호출됨:', progressData);
     return progressData;
   }
 }
@@ -570,8 +564,12 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
  * page.goto() 대신 사용하여 봇 감지 회피
  */
 const navigateToUrlNaturally = async (url: string, page: any): Promise<void> => {
+  const initialUrl = page.url();
   // 자연스러운 네비게이션: DOM에 링크 주입 후 마우스 클릭 시뮬레이션
   await page.evaluate((targetUrl) => {
+    const existingLinks = Array.from(document.querySelectorAll('a[data-natural-navigation="true"]'));
+    existingLinks.forEach((element) => element.remove());
+
     // 링크 생성 및 DOM에 추가 (보이는 위치에)
     const link = document.createElement('a');
     link.href = targetUrl;
@@ -587,6 +585,8 @@ const navigateToUrlNaturally = async (url: string, page: any): Promise<void> => 
     link.style.fontSize = '12px';
     link.textContent = 'Navigate';
     link.setAttribute('data-natural-navigation', 'true');
+    link.setAttribute('data-target-url', targetUrl);
+    link.dataset.targetUrl = targetUrl;
     document.body.appendChild(link);
   }, url);
 
@@ -594,21 +594,51 @@ const navigateToUrlNaturally = async (url: string, page: any): Promise<void> => 
   await AntiDetectionUtils.simulateMouseMovement(page);
   await AntiDetectionUtils.naturalDelay(500, 1000);
 
+  const navigationPromise = page
+    .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 45000 })
+    .catch((error: any) => {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        return 'timeout';
+      }
+      throw error;
+    });
+
+  const selector = 'a[data-natural-navigation="true"]';
   // 링크 클릭 (여러 방법 시도)
   try {
-    await page.click(`a[href="${url}"]`);
-  } catch (error) {
-    // 대안: evaluate로 직접 클릭
+    await page.click(selector, { delay: 30 });
+  } catch {
     await page.evaluate((targetUrl) => {
-      const link = document.querySelector(`a[href="${targetUrl}"]`) as HTMLAnchorElement;
+      const link = document.querySelector(
+        `a[data-natural-navigation="true"][data-target-url="${targetUrl}"]`,
+      ) as HTMLAnchorElement | null;
       if (link) {
         link.click();
       }
     }, url);
   }
+  const navigationResult = await navigationPromise;
 
-  // 페이지 로딩 대기
-  await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 });
+  if (navigationResult === 'timeout') {
+    const currentUrl = page.url();
+    if (!urlsMatch(currentUrl, url)) {
+      throw new Error(
+        `[navigateToUrlNaturally] 페이지 네비게이션 타임아웃 - target: ${url}, current: ${currentUrl}, initial: ${initialUrl}`,
+      );
+    }
+  }
+};
+
+const urlsMatch = (currentUrl: string, targetUrl: string): boolean => {
+  try {
+    const current = new URL(currentUrl);
+    const target = new URL(targetUrl);
+    const isSameOrigin = current.origin === target.origin;
+    const isSamePath = current.pathname === target.pathname || current.pathname.startsWith(`${target.pathname}/`);
+    return isSameOrigin && isSamePath;
+  } catch {
+    return currentUrl === targetUrl;
+  }
 };
 
 // ========================================
