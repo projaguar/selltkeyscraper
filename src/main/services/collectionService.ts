@@ -47,6 +47,32 @@ export class CollectionService {
     }
   }
 
+  private async showAlert(
+    message: string,
+    options?: { title?: string; type?: 'info' | 'warning' | 'error' },
+  ): Promise<void> {
+    try {
+      const { dialog, BrowserWindow } = await import('electron');
+      const focusedWindow = BrowserWindow.getFocusedWindow();
+
+      const dialogOptions = {
+        type: options?.type ?? 'warning',
+        buttons: ['확인'],
+        defaultId: 0,
+        title: options?.title ?? '알림',
+        message,
+      } as Electron.MessageBoxOptions;
+
+      if (focusedWindow) {
+        await dialog.showMessageBox(focusedWindow, dialogOptions);
+      } else {
+        await dialog.showMessageBox(dialogOptions);
+      }
+    } catch (error) {
+      console.error('[CollectionService] 알림 표시 실패:', error);
+    }
+  }
+
   /**
    * 수집 시작
    * @param usernum 사용자 번호
@@ -141,10 +167,11 @@ export class CollectionService {
       // 4단계: 상품별 수집 처리 루프
       // ========================================
       const insertUrl = res.inserturl;
-      const page = browserService.getCurrentPage();
       // 상품 수집 시작
       this.progress.status = '상품 수집 시작';
       this.addLog('상품 수집 시작');
+
+      let terminationMessage: string | null = null;
 
       for (const item of res.item) {
         // 작업종료 요청이 있으면 break(종료)
@@ -152,6 +179,22 @@ export class CollectionService {
           console.log('[CollectionService] 수집 작업이 중단되었습니다.');
           break;
         }
+
+        if (!browserService.isBrowserReady()) {
+          terminationMessage = '브라우저가 닫혀 작업이 중단되었습니다. 어플리케이션을 다시 실행해주세요.';
+          this.addLog(`❌ ${terminationMessage}`);
+          console.warn('[CollectionService] 브라우저 준비 상태가 아닙니다. 작업을 중단합니다.');
+          break;
+        }
+
+        const page = browserService.getCurrentPage();
+        if (!page || page.isClosed()) {
+          terminationMessage = '브라우저가 닫혀 작업이 중단되었습니다. 어플리케이션을 다시 실행해주세요.';
+          this.addLog(`❌ ${terminationMessage}`);
+          console.warn('[CollectionService] 현재 페이지가 닫혔습니다. 작업을 중단합니다.');
+          break;
+        }
+
         // 블럭 페이지 체크
         const isBlockedPage = await BlockDetectionUtils.isBlockedPage(page);
         if (isBlockedPage) {
@@ -394,6 +437,23 @@ export class CollectionService {
 
         this.progress.waitTime = undefined;
         this.progress.status = `상품 수집 중... (${this.progress.current}/${this.progress.total})`;
+      }
+
+      if (terminationMessage) {
+        await this.showAlert(terminationMessage, { type: 'warning' });
+        this.isRunning = false;
+        this.currentUsernum = null;
+        this.progress = {
+          current: 0,
+          total: 0,
+          currentStore: '',
+          status: '브라우저 종료 감지',
+        };
+
+        return {
+          success: false,
+          message: terminationMessage,
+        };
       }
 
       // ========================================

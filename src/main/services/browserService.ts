@@ -23,6 +23,37 @@ export class BrowserService {
   private currentPage: Page | null = null;
   private isInitialized: boolean = false;
   private isInitializing: boolean = false; // 초기화 중인지 확인
+  private readonly pageBrandStyleId = '__selltkeyscraper_brand__';
+  private readonly pageBrandCss = `
+@keyframes selltkeyscraper-brand-pulse {
+  0% {
+    opacity: 0.35;
+    box-shadow: inset 0 0 8px rgba(220, 53, 69, 0.4);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: inset 0 0 18px rgba(220, 53, 69, 0.75);
+  }
+  100% {
+    opacity: 0.35;
+    box-shadow: inset 0 0 8px rgba(220, 53, 69, 0.4);
+  }
+}
+
+html::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  border: 4px solid rgba(220, 53, 69, 0.9);
+  box-shadow: inset 0 0 12px rgba(220, 53, 69, 0.6);
+  z-index: 2147483647;
+  animation: selltkeyscraper-brand-pulse 2.8s ease-in-out infinite;
+}
+`;
 
   private constructor() {
     // 싱글톤 패턴을 위한 private 생성자
@@ -208,6 +239,8 @@ export class BrowserService {
       });
 
       this.browser = await puppeteer.launch(launchOptions);
+      const initialPages = await this.browser.pages();
+      await Promise.all(initialPages.map((page) => this.applyPageBranding(page)));
 
       this.isInitialized = true;
       console.log('[BrowserService] 브라우저 초기화 완료');
@@ -248,6 +281,7 @@ export class BrowserService {
 
     if (emptyPage) {
       console.log('[BrowserService] 기존 빈 탭을 재사용합니다.');
+      await this.applyPageBranding(emptyPage);
       return emptyPage;
     }
 
@@ -276,6 +310,7 @@ export class BrowserService {
     });
 
     await page.setDefaultNavigationTimeout(30000);
+    await this.applyPageBranding(page);
 
     return page;
   }
@@ -605,6 +640,7 @@ export class BrowserService {
         currentPage = pages[0];
         await currentPage.bringToFront();
         this.setCurrentPage(currentPage);
+        await this.applyPageBranding(currentPage);
         console.log(`[BrowserService] 첫 번째 탭으로 전환: ${currentPage.url()}`);
 
         // 나머지 탭들 닫기
@@ -620,6 +656,7 @@ export class BrowserService {
         // 1개면 그대로 사용
         currentPage = pages[0];
         this.setCurrentPage(currentPage);
+        await this.applyPageBranding(currentPage);
         console.log(`[BrowserService] 기존 페이지 사용: ${currentPage.url()}`);
       } else {
         return { success: false, message: '사용 가능한 페이지가 없습니다.' };
@@ -665,6 +702,47 @@ export class BrowserService {
     } catch (error) {
       console.error('[BrowserService] 서비스 준비 오류:', error);
       return { success: false, message: '서비스 준비 중 오류 발생' };
+    }
+  }
+
+  private async applyPageBranding(page: Page): Promise<void> {
+    const styleId = this.pageBrandStyleId;
+    const cssContent = this.pageBrandCss.replace(/`/g, '\\`');
+    const injectScript = `
+      (() => {
+        const styleId = '${styleId}';
+        const css = \`${cssContent}\`;
+        const ensureStyle = () => {
+          if (document.getElementById(styleId)) {
+            return;
+          }
+          const style = document.createElement('style');
+          style.id = styleId;
+          style.textContent = css;
+          const target = document.head || document.documentElement;
+          if (target) {
+            target.appendChild(style);
+          } else {
+            document.addEventListener('DOMContentLoaded', () => {
+              const laterTarget = document.head || document.documentElement;
+              if (laterTarget && !document.getElementById(styleId)) {
+                laterTarget.appendChild(style);
+              }
+            }, { once: true });
+          }
+        };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', ensureStyle, { once: true });
+        } else {
+          ensureStyle();
+        }
+      })();
+    `;
+    await page.evaluateOnNewDocument(injectScript);
+    try {
+      await page.evaluate(injectScript);
+    } catch {
+      // 페이지 상태에 따라 즉시 실행이 실패할 수 있음 (about:blank 등)
     }
   }
 }
