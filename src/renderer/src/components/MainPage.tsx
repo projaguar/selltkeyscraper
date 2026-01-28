@@ -414,6 +414,7 @@ const MainPage: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">셀트키스크래퍼</h1>
             <p className="text-sm text-gray-600">스마트한 상품 수집 도구</p>
+            <span className="text-xs text-gray-400">2026.01.28</span>
           </div>
           <Button
             variant="outline"

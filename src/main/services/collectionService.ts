@@ -264,8 +264,12 @@ export class CollectionService {
             const isAlreadyOnAuction = currentUrl.includes('auction.co.kr');
 
             if (!isAlreadyOnAuction) {
-              console.log('[CollectionService] 옥션 메인 페이지로 이동 중...');
-              await navigateToUrlNaturally('https://www.auction.co.kr', page);
+              console.log('[CollectionService] 옥션 메인 페이지로 이동 중... (크로스 도메인)');
+              // 크로스 도메인 이동은 일반 goto 사용 (더 안정적)
+              await page.goto('https://www.auction.co.kr', {
+                waitUntil: 'domcontentloaded',
+                timeout: 30000,
+              });
               await delay(1000); // 메인 페이지 로딩 대기
               console.log('[CollectionService] 옥션 메인 페이지 이동 완료');
             } else {
@@ -295,6 +299,24 @@ export class CollectionService {
             }
           } else if (item.URLPLATFORMS === 'NAVER') {
             console.log('[CollectionService] NAVER 상품 처리 시작');
+
+            // 블록 시스템 회피: 네이버 사이트에 처음 진입할 때만 메인 페이지로 이동
+            const currentUrl = page.url();
+            const isAlreadyOnNaver = currentUrl.includes('naver.com');
+
+            if (!isAlreadyOnNaver) {
+              console.log('[CollectionService] 네이버 메인 페이지로 이동 중... (크로스 도메인)');
+              // 크로스 도메인 이동은 일반 goto 사용 (더 안정적)
+              await page.goto('https://www.naver.com', {
+                waitUntil: 'domcontentloaded',
+                timeout: 30000,
+              });
+              await delay(1000); // 메인 페이지 로딩 대기
+              console.log('[CollectionService] 네이버 메인 페이지 이동 완료');
+            } else {
+              console.log('[CollectionService] 이미 네이버 사이트 내에 있음, 메인 페이지 이동 스킵');
+            }
+
             const data = await getNaverGoodsList(item.TARGETURL, page);
             // 데이터 유효성 검사
             if (!data) {
@@ -364,17 +386,24 @@ export class CollectionService {
           // 결과 데이터 API 전송
           console.log('[CollectionService] 결과 데이터 전송:', result);
           const resPost = await postGoodsList(
+            // {
+            //   properties: {
+            //     urlnum: item.URLNUM,
+            //     usernum: usernum,
+            //     platforms: item.URLPLATFORMS,
+            //     spricelimit: item.SPRICELIMIT,
+            //     epricelimit: item.EPRICELIMIT,
+            //     inserturl: insertUrl,
+            //     jsonstring: result,
+            //   },
+            //   params: { isParsed: true },
+            // },
             {
-              properties: {
-                urlnum: item.URLNUM,
-                usernum: usernum,
-                platforms: item.URLPLATFORMS,
-                spricelimit: item.SPRICELIMIT,
-                epricelimit: item.EPRICELIMIT,
+              data: result,
+              context: {
+                isParsed: true,
                 inserturl: insertUrl,
-                jsonstring: result,
               },
-              params: { isParsed: true },
             },
             item.URLPLATFORMS,
           );
@@ -955,11 +984,17 @@ const collectNaverProducts = async (data: any, targetList: string[]): Promise<an
   }
 };
 
+// /v1/product-collect/relay-naver-goods
 /**
  * 결과 데이터 API 전송
  */
 const postGoodsList = (data: any, platform: 'NAVER' | 'AUCTION'): Promise<any> => {
-  const url = `${process.env.URL_API ?? 'https://api.opennest.co.kr/api/v2'}/restful/ovse/relay-${platform.toLowerCase()}-goods`;
+  // const url = `${process.env.URL_API ?? 'https://api.opennest.co.kr/api/v2'}/restful/ovse/relay-${platform.toLowerCase()}-goods`;
+  const url = `${process.env.URL_API ?? 'https://api.opennest.co.kr/selltkey/v1'}/product-collect/relay-${platform.toLowerCase()}-goods`;
+
+  console.log('URL', url);
+  console.log('DATA', JSON.stringify(data, null, 2)); // 데이터가 너무 길 경우 일부만 출력
+
   return axios
     .request({
       method: 'POST',
