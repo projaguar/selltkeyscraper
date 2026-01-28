@@ -258,6 +258,20 @@ export class CollectionService {
           // 플랫폼별 분기 처리
           if (item.URLPLATFORMS === 'AUCTION') {
             console.log('[CollectionService] AUCTION 상품 처리 시작');
+
+            // 블록 시스템 회피: 옥션 사이트에 처음 진입할 때만 메인 페이지로 이동
+            const currentUrl = page.url();
+            const isAlreadyOnAuction = currentUrl.includes('auction.co.kr');
+
+            if (!isAlreadyOnAuction) {
+              console.log('[CollectionService] 옥션 메인 페이지로 이동 중...');
+              await navigateToUrlNaturally('https://www.auction.co.kr', page);
+              await delay(1000); // 메인 페이지 로딩 대기
+              console.log('[CollectionService] 옥션 메인 페이지 이동 완료');
+            } else {
+              console.log('[CollectionService] 이미 옥션 사이트 내에 있음, 메인 페이지 이동 스킵');
+            }
+
             const goods = await getAuctionGoodsList(item.TARGETURL, page);
 
             if (goods.length === 0) {
@@ -265,19 +279,9 @@ export class CollectionService {
               result.result.errorMsg = '상품 없음';
               result.result.list = [];
             } else {
-              // 해외배송 상품 체크
-              const procPage = await browserService.createPage();
-              await procPage.goto(goods[0].goodsurl);
-              const spans = await procPage.$$('.text__title');
-              let isOversea = false;
-              for (const span of spans) {
-                const text = await procPage.evaluate((el) => el.textContent, span);
-                if (text === '해외배송 상품') {
-                  isOversea = true;
-                  break;
-                }
-              }
-              await procPage.close();
+              // 해외배송 상품 체크 (JSON 데이터에서 직접 확인)
+              const isOversea = goods.some((item: any) => item.isOverseas === true);
+              console.log(`[CollectionService] 해외직구 상품 확인: ${isOversea}`);
 
               if (isOversea) {
                 result.result.error = false;
@@ -709,8 +713,16 @@ const urlsMatch = (currentUrl: string, targetUrl: string): boolean => {
  * 옥션 상품 목록 수집
  */
 const getAuctionGoodsList = async (url: string, page: any): Promise<any> => {
-  // 자연스러운 네비게이션 사용
-  await navigateToUrlNaturally(url, page);
+  console.log(`[getAuctionGoodsList] 페이지 네비게이션 시작: ${url}`);
+
+  // 옥션 메인 페이지를 거쳐서 왔으므로 일반 goto 사용 (블록 회피 완료)
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    console.log('[getAuctionGoodsList] 페이지 이동 완료 (goto)');
+  } catch (error) {
+    console.error('[getAuctionGoodsList] 페이지 이동 실패:', error);
+    throw error;
+  }
 
   const textContent = await page.evaluate(() => {
     const element = document.getElementById('__NEXT_DATA__');
@@ -718,61 +730,96 @@ const getAuctionGoodsList = async (url: string, page: any): Promise<any> => {
   });
 
   if (!textContent) {
-    throw new Error('textContent is undefined');
+    console.error('[getAuctionGoodsList] __NEXT_DATA__ 엘리먼트를 찾을 수 없습니다.');
+    throw new Error('__NEXT_DATA__ element not found');
   }
 
   const data = JSON.parse(textContent);
-  const regions = data.props.pageProps.initialStates.curatorData.regions;
 
-  const list = regions.reduce((acc: any, curr: any) => {
-    const subList = curr.modules.reduce((acc: any, curr: any) => {
-      const subSubList = curr.rows.reduce((acc: any, curr: any) => {
-        if (curr.designName === 'ItemCardGeneral') {
-          if ((curr.viewModel.score?.payCount?.text ?? '0') === '0') {
-            return acc;
-          }
+  // 새로운 데이터 구조: regionsData.content.modules
+  const modules = data.props?.pageProps?.initialStates?.curatorData?.regionsData?.content?.modules;
 
-          const salePrice = Number((curr.viewModel.price.binPrice ?? '0').replace(/,/g, ''));
-          const discountsaleprice = curr.viewModel.price.couponDiscountedBinPrice
-            ? Number((curr.viewModel.price.couponDiscountedBinPrice ?? '0').replace(/,/g, ''))
-            : salePrice;
-          const discountrate = curr.viewModel.price.discountRate
-            ? Number((curr.viewModel.price.discountRate ?? '0').replace(/,/g, ''))
-            : 0;
+  if (!modules) {
+    console.error('[getAuctionGoodsList] 옥션 데이터 구조를 찾을 수 없습니다.');
+    return [];
+  }
 
-          let deliveryfee = 0;
-          const tag = curr.viewModel.tags.find((tag: string) => tag.startsWith('배송비'));
-          if (tag) {
-            const match = tag.match(/(\d{1,3}(,\d{3})*)/);
+  const list = modules.reduce((acc: any, module: any) => {
+    const subList = module.rows.reduce((acc: any, curr: any) => {
+      if (curr.designName === 'ItemCardGeneral') {
+        const payCountText = curr.viewModel.score?.payCount?.text ?? '0';
+        if (payCountText === '0') {
+          return acc;
+        }
+
+        const salePrice = Number((curr.viewModel.price.price?.text ?? '0').replace(/,/g, ''));
+        const discountsaleprice = curr.viewModel.price.couponDiscountedBinPrice
+          ? Number((curr.viewModel.price.couponDiscountedBinPrice ?? '0').replace(/,/g, ''))
+          : salePrice;
+        const discountrate = curr.viewModel.price.discountRate
+          ? Number((curr.viewModel.price.discountRate ?? '0').replace(/,/g, ''))
+          : 0;
+
+        // 배송비 추출 로직 (무료배송 체크 → deliveryTags 확인 → tags 확인)
+        let deliveryfee = 0;
+
+        // 1. 무료배송 플래그 확인
+        if (curr.viewModel.isFreeDelivery) {
+          deliveryfee = 0;
+        } else {
+          // 2. deliveryTags에서 배송비 확인 (새로운 구조)
+          const deliveryTag = curr.viewModel.deliveryTags?.find(
+            (tag: any) => tag.text?.text && tag.text.text.includes('배송비'),
+          );
+          if (deliveryTag?.text?.text) {
+            const match = deliveryTag.text.text.match(/(\d{1,3}(,\d{3})*)/);
             if (match) {
               deliveryfee = Number(match[0].replace(/,/g, ''));
             }
           }
 
-          return [
-            ...acc,
-            {
-              goodscode: curr.viewModel.itemNo,
-              goodsname: curr.viewModel.item.text,
-              imageurl: curr.viewModel.item.imageUrl,
-              goodsurl: curr.viewModel.item.link,
-              salePrice,
-              discountsaleprice,
-              discountrate,
-              deliveryfee,
-              seoinfo: '',
-              nvcate: '',
-            },
-          ];
+          // 3. 기존 tags에서 배송비 확인 (폴백)
+          if (deliveryfee === 0) {
+            const tag = curr.viewModel.tags?.find((tag: string) => tag.startsWith('배송비'));
+            if (tag) {
+              const match = tag.match(/(\d{1,3}(,\d{3})*)/);
+              if (match) {
+                deliveryfee = Number(match[0].replace(/,/g, ''));
+              }
+            }
+          }
         }
-        return acc;
-      }, []);
-      return [...acc, ...subSubList];
+
+        // 해외직구 여부 확인
+        const isOverseas =
+          curr.viewModel.sellerOfficialTag?.title?.some((item: any) => item.text === '해외직구') || false;
+
+        return [
+          ...acc,
+          {
+            goodscode: curr.viewModel.itemNo,
+            goodsname: curr.viewModel.item.text,
+            imageurl: curr.viewModel.item.imageUrl,
+            goodsurl: curr.viewModel.item.link,
+            salePrice,
+            discountsaleprice,
+            discountrate,
+            deliveryfee,
+            seoinfo: '',
+            nvcate: '',
+            isOverseas,
+          },
+        ];
+      }
+      return acc;
     }, []);
     return [...acc, ...subList];
   }, []);
 
   const result = Array.from(list.reduce((map: any, item: any) => map.set(item.goodscode, item), new Map()).values());
+  const overseasCount = result.filter((item: any) => item.isOverseas === true).length;
+  console.log(`[getAuctionGoodsList] 수집 완료: 총 ${result.length}개 (해외직구 ${overseasCount}개)`);
+
   return result;
 };
 

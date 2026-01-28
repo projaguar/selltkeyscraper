@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron';
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 // import icon from '../../resources/icon.png?asset';
@@ -7,9 +7,118 @@ import axios from 'axios';
 import { browserService, collectionService, sourcingService } from './services';
 import { exec } from 'child_process';
 
+// 에러 로그 저장을 위한 변수
+let mainWindow: BrowserWindow | null = null;
+
+/**
+ * 상세한 에러 정보를 생성하는 헬퍼 함수
+ */
+function generateDetailedErrorInfo(error: Error | any, context: string): string {
+  const timestamp = new Date().toISOString();
+  const platform = process.platform;
+  const arch = process.arch;
+  const nodeVersion = process.version;
+  const appVersion = app.getVersion();
+
+  let errorMessage = '';
+  let errorStack = '';
+
+  if (error instanceof Error) {
+    errorMessage = error.message;
+    errorStack = error.stack || '스택 정보 없음';
+  } else {
+    errorMessage = String(error);
+    errorStack = '스택 정보 없음';
+  }
+
+  return `
+========================================
+오류 상세 정보
+========================================
+
+발생 시간: ${timestamp}
+컨텍스트: ${context}
+
+----------------------------------------
+에러 메시지:
+----------------------------------------
+${errorMessage}
+
+----------------------------------------
+스택 트레이스:
+----------------------------------------
+${errorStack}
+
+----------------------------------------
+시스템 정보:
+----------------------------------------
+- 앱 버전: ${appVersion}
+- 플랫폼: ${platform}
+- 아키텍처: ${arch}
+- Node.js 버전: ${nodeVersion}
+- 개발 모드: ${is.dev ? 'Yes' : 'No'}
+
+========================================
+위 정보를 복사하여 개발자에게 전달해주세요
+========================================
+`.trim();
+}
+
+/**
+ * 상세 에러 다이얼로그 표시
+ */
+function showDetailedErrorDialog(title: string, errorInfo: string): void {
+  // 배포 환경에서만 다이얼로그 표시
+  if (!is.dev) {
+    dialog.showMessageBoxSync({
+      type: 'error',
+      title: title,
+      message: title,
+      detail: errorInfo,
+      buttons: ['확인'],
+    });
+  }
+}
+
+// 전역 에러 핸들러 - 캐치되지 않은 예외
+process.on('uncaughtException', (error) => {
+  console.error('[전역 에러] Uncaught Exception:', error);
+
+  const errorInfo = generateDetailedErrorInfo(error, '예기치 않은 예외 (Uncaught Exception)');
+  showDetailedErrorDialog('예기치 않은 오류 발생', errorInfo);
+
+  // 렌더러 프로세스에도 에러 전송
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('global-error', {
+      type: 'uncaughtException',
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+// 전역 에러 핸들러 - 캐치되지 않은 Promise rejection
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[전역 에러] Unhandled Rejection at:', promise, 'reason:', reason);
+
+  const errorInfo = generateDetailedErrorInfo(reason, '처리되지 않은 Promise Rejection');
+  showDetailedErrorDialog('Promise 오류 발생', errorInfo);
+
+  // 렌더러 프로세스에도 에러 전송
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('global-error', {
+      type: 'unhandledRejection',
+      message: String(reason),
+      stack: reason instanceof Error ? reason.stack : undefined,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 900,
     title: 'Selltkey Scraper',
@@ -23,7 +132,11 @@ function createWindow(): void {
   });
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show();
+    mainWindow?.show();
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
   });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -72,6 +185,11 @@ app.whenReady().then(() => {
       return response.data;
     } catch (error) {
       console.error('Main process API 호출 오류:', error);
+
+      // 상세 에러 정보 생성 및 표시
+      const errorInfo = generateDetailedErrorInfo(error, `로그인 API 호출 (사용자: ${userId})`);
+      showDetailedErrorDialog('로그인 API 오류', errorInfo);
+
       throw error;
     }
   });
@@ -137,7 +255,13 @@ app.whenReady().then(() => {
       return result;
     } catch (error) {
       console.error('수집 시작 오류:', error);
-      return { success: false, message: '수집 시작에 실패했습니다.' };
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      // 상세 에러 정보 생성 및 표시
+      const errorInfo = generateDetailedErrorInfo(error, `수집 시작 (사용자번호: ${usernum})`);
+      showDetailedErrorDialog('수집 시작 오류', errorInfo);
+
+      return { success: false, message: `수집 시작에 실패했습니다: ${errorMsg}` };
     }
   });
 
@@ -192,7 +316,13 @@ app.whenReady().then(() => {
       return { success: true, message: '네이버 로그인 페이지가 열렸습니다.' };
     } catch (error) {
       console.error('네이버 로그인 페이지 열기 오류:', error);
-      return { success: false, message: '네이버 로그인 페이지를 열 수 없습니다.' };
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      // 상세 에러 정보 생성 및 표시
+      const errorInfo = generateDetailedErrorInfo(error, '네이버 로그인 페이지 열기');
+      showDetailedErrorDialog('네이버 로그인 페이지 오류', errorInfo);
+
+      return { success: false, message: `네이버 로그인 페이지를 열 수 없습니다: ${errorMsg}` };
     }
   });
 
@@ -209,9 +339,15 @@ app.whenReady().then(() => {
       };
     } catch (error) {
       console.error('키워드 가져오기 실패:', error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      // 상세 에러 정보 생성 및 표시
+      const errorInfo = generateDetailedErrorInfo(error, `키워드 가져오기 (사용자번호: ${userNum})`);
+      showDetailedErrorDialog('키워드 가져오기 오류', errorInfo);
+
       return {
         result: false,
-        message: error.message,
+        message: errorMsg,
         payload: [],
       };
     }
@@ -225,7 +361,13 @@ app.whenReady().then(() => {
       return result;
     } catch (error) {
       console.error('소싱 시작 오류:', error);
-      return { success: false, message: '소싱 시작에 실패했습니다.' };
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      // 상세 에러 정보 생성 및 표시
+      const errorInfo = generateDetailedErrorInfo(error, `소싱 시작 (키워드 개수: ${config.keywords?.length || 0})`);
+      showDetailedErrorDialog('소싱 시작 오류', errorInfo);
+
+      return { success: false, message: `소싱 시작에 실패했습니다: ${errorMsg}` };
     }
   });
 
@@ -280,7 +422,16 @@ app.whenReady().then(() => {
       return response.data;
     } catch (error) {
       console.error('[IPC] 상품 데이터 전송 오류:', error);
-      return { success: false, message: '데이터 전송 중 오류 발생' };
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      // 상세 에러 정보 생성 및 표시
+      const errorInfo = generateDetailedErrorInfo(
+        error,
+        `상품 데이터 전송 (사용자번호: ${requestData.usernum || '알수없음'}, 상품 수: ${requestData.list?.length || 0})`,
+      );
+      showDetailedErrorDialog('상품 데이터 전송 오류', errorInfo);
+
+      return { success: false, message: `데이터 전송 중 오류 발생: ${errorMsg}` };
     }
   });
 

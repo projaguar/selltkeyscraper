@@ -232,12 +232,6 @@ html::after {
         console.log('[BrowserService] 기본 Chrome 경로 사용');
       }
 
-      console.log('[BrowserService] 브라우저 실행 옵션:', {
-        headless: launchOptions.headless,
-        args: launchOptions.args,
-        executablePath: launchOptions.executablePath,
-      });
-
       this.browser = await puppeteer.launch(launchOptions);
       const initialPages = await this.browser.pages();
       await Promise.all(initialPages.map((page) => this.applyPageBranding(page)));
@@ -474,6 +468,14 @@ html::after {
    */
   async openNaverLoginPage(): Promise<Page> {
     try {
+      // 초기화 중이면 완료까지 대기
+      if (this.isInitializing) {
+        console.log('[BrowserService] 브라우저 초기화 대기 중...');
+        while (this.isInitializing) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+
       // 브라우저가 이미 초기화되어 있으면 재사용
       if (!this.browser) {
         await this.initializeBrowser();
@@ -489,20 +491,25 @@ html::after {
       // 네이버 메인 페이지로 이동 (로그인 상태 체크 없이)
       console.log('[BrowserService] 네이버 메인 페이지로 이동...');
 
-      try {
-        await page.goto('https://www.naver.com', {
-          waitUntil: 'domcontentloaded',
-          timeout: 30000, // 타임아웃 30초로 증가
-        });
-
-        // 페이지 로딩 완료 대기
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        console.log('[BrowserService] 네이버 메인 페이지 로딩 완료');
-      } catch (error) {
-        console.error('[BrowserService] 네이버 페이지 이동 실패:', error);
-        throw new Error('네이버 페이지로 이동할 수 없습니다. 네트워크 연결을 확인해주세요.');
+      // 현재 URL 확인 - 이미 네이버에 있으면 이동 스킵
+      const currentUrl = page.url();
+      if (currentUrl.includes('naver.com')) {
+        console.log('[BrowserService] 이미 네이버 페이지에 있음, 이동 스킵');
+      } else {
+        try {
+          await page.goto('https://www.naver.com', {
+            waitUntil: 'domcontentloaded',
+            timeout: 30000,
+          });
+          console.log('[BrowserService] 네이버 메인 페이지 로딩 완료');
+        } catch (error) {
+          console.error('[BrowserService] 네이버 페이지 이동 실패:', error);
+          throw new Error('네이버 페이지로 이동할 수 없습니다. 네트워크 연결을 확인해주세요.');
+        }
       }
+
+      // 페이지 로딩 완료 대기
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // 잠시 대기 후 로그인 버튼 클릭 시도
       console.log('[BrowserService] 로그인 버튼 클릭 시도...');
