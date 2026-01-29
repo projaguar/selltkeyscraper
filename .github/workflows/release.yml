@@ -61,20 +61,34 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Package (macOS)
+      - name: Import Code Signing Certificate (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          # 코드 서명 완전 비활성화
-          export CSC_IDENTITY_AUTO_DISCOVERY=false
-          export CSC_LINK=""
-          export CSC_KEY_PASSWORD=""
-          export APPLE_ID=""
-          export APPLE_PASSWORD=""
-          export APPLE_TEAM_ID=""
+          # Create certificate file from base64-encoded secret
+          echo "${{ secrets.MACOS_CERTIFICATE }}" | base64 --decode > certificate.p12
 
-          bunx electron-builder --mac --publish never
+          # Create temporary keychain
+          security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+
+          # Import certificate to keychain
+          security import certificate.p12 -k build.keychain -P "${{ secrets.MACOS_CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
+
+          # Set keychain settings
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+
+          # Clean up certificate file
+          rm -f certificate.p12
+
+      - name: Package (macOS)
+        if: matrix.os == 'macos-latest'
+        run: bunx electron-builder --mac --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload Windows artifacts
         if: matrix.os == 'windows-latest'
