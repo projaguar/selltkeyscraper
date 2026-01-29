@@ -18,6 +18,7 @@
     "build:unpack": "bun run build && electron-builder --dir",
     "build:win": "bun run build && electron-builder --win --x64",
     "build:mac": "electron-vite build && electron-builder --mac",
+    "build:macCertification": "set -a && source .env && set +a && electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
     "release": "bash scripts/release.sh",
     "delete-tag": "bash scripts/delete-tag.sh",

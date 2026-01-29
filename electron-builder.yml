@@ -20,16 +20,18 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: false
-  gatekeeperAssess: false
-  hardenedRuntime: false
-  identity: null
+  notarize: true
+  gatekeeperAssess: true
+  hardenedRuntime: true
+  # identity: null
+  # identity: "Developer ID Application: JaeJun Lee"
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:

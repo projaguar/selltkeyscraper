@@ -74,6 +74,15 @@ bun run build:win
 # macOS용 빌드
 bun run build:mac
 
+# macOS용 빌드(인증)
+bun run build:macCertification
+# 수정사항. electron-builder.yml
+entitlements: build/entitlements.mac.plist 추가
+notarize: false => true
+gatekeeperAssess: false => true
+hardenedRuntime: false => true
+identity: null 제거
+
 # 빌드 결과는 dist/ 폴더에 생성됩니다
 ```
 
