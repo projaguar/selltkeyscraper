@@ -73,10 +73,28 @@ html::after {
   }
 
   /**
-   * Windows에서 Chrome 브라우저 경로 찾기
+   * Chrome 브라우저 경로 찾기 (Windows, macOS 지원)
    */
   private findChromePath(): string | null {
     const platform = process.platform;
+
+    if (platform === 'darwin') {
+      // macOS에서 Chrome 경로 찾기
+      const possiblePaths = [
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        path.join(process.env.HOME || '', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
+      ];
+
+      for (const chromePath of possiblePaths) {
+        if (fs.existsSync(chromePath)) {
+          console.log('[BrowserService] Chrome 경로 발견 (macOS):', chromePath);
+          return chromePath;
+        }
+      }
+
+      console.warn('[BrowserService] macOS에서 Chrome을 찾을 수 없습니다. 기본 경로를 사용합니다.');
+      return null;
+    }
 
     if (platform === 'win32') {
       const possiblePaths = [
@@ -117,7 +135,7 @@ html::after {
       return null;
     }
 
-    return null; // Windows가 아닌 경우 기본 경로 사용
+    return null; // 다른 플랫폼은 기본 경로 사용
   }
 
   /**
@@ -241,12 +259,16 @@ html::after {
     } catch (error) {
       console.error('[BrowserService] 브라우저 초기화 오류:', error);
 
-      // Windows에서 Chrome을 찾을 수 없는 경우 특별한 에러 메시지
-      if (process.platform === 'win32') {
-        const chromePath = this.findChromePath();
-        if (!chromePath) {
+      // 플랫폼별 Chrome 경로 확인 및 에러 메시지
+      const chromePath = this.findChromePath();
+      if (!chromePath) {
+        if (process.platform === 'darwin') {
           throw new Error(
-            'Windows에서 Chrome 브라우저를 찾을 수 없습니다. Chrome을 설치하거나 올바른 경로에 있는지 확인해주세요.',
+            'macOS에서 Chrome 브라우저를 찾을 수 없습니다. Google Chrome을 설치해주세요.\n다운로드: https://www.google.com/chrome/',
+          );
+        } else if (process.platform === 'win32') {
+          throw new Error(
+            'Windows에서 Chrome 브라우저를 찾을 수 없습니다. Google Chrome을 설치해주세요.\n다운로드: https://www.google.com/chrome/',
           );
         }
       }
