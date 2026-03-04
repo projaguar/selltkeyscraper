@@ -323,7 +323,10 @@ export class CollectionService {
               result.result.error = true;
               result.result.errorMsg = '데이터 로드 실패';
               result.result.list = [];
-            } else if (!data.categoryTree?.A || Object.keys(data.categoryTree?.A).length === 0) {
+            } else if (
+              (data.channel && data.channel?.channelExternalStatusType !== 'NORMAL') ||
+              (data.categoryTree && (!data.categoryTree?.A || Object.keys(data.categoryTree?.A).length === 0))
+            ) {
               result.result.error = true;
               result.result.errorMsg = '운영중이 아님';
               result.result.list = [];
