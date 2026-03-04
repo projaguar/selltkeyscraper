@@ -1,0 +1,163 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1772619397297,
+  "projectRoot": "/Users/projaguar/projects/selltkeyscraper",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "react",
+        "version": "19.1.0",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "19.1.0",
+        "category": "frontend"
+      },
+      {
+        "name": "vite",
+        "version": "7.0.5",
+        "category": "build"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": null,
+    "lintCommand": "npm run lint",
+    "devCommand": "npm run dev",
+    "scripts": {
+      "format": "prettier --write .",
+      "lint": "eslint --cache .",
+      "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+      "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+      "typecheck": "bun run typecheck:node && bun run typecheck:web",
+      "start": "electron-vite preview",
+      "dev": "electron-vite dev",
+      "build": "bun run typecheck && electron-vite build",
+      "postinstall": "electron-builder install-app-deps",
+      "build:unpack": "bun run build && electron-builder --dir",
+      "build:win": "bun run build && electron-builder --win --x64",
+      "build:mac": "electron-vite build && electron-builder --mac",
+      "build:macCertification": "set -a && source .env && set +a && electron-vite build && electron-builder --mac",
+      "build:linux": "electron-vite build && electron-builder --linux",
+      "release": "bash scripts/release.sh",
+      "delete-tag": "bash scripts/delete-tag.sh",
+      "mcp:puppeteer": "npx @modelcontextprotocol/server-puppeteer"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "scripts",
+      "src"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "_resources": {
+      "path": "_resources",
+      "purpose": null,
+      "fileCount": 12,
+      "lastAccessed": 1772619397045,
+      "keyFiles": [
+        "__next_data_.json",
+        "api-search-all 결과처리.txt",
+        "auction.json",
+        "block-sample_1.html",
+        "developerID_application.cer"
+      ]
+    },
+    "_test": {
+      "path": "_test",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1772619397053,
+      "keyFiles": [
+        "sourcingService_backup_20251014_014744.ts",
+        "test.rest"
+      ]
+    },
+    "build": {
+      "path": "build",
+      "purpose": "Build output",
+      "fileCount": 6,
+      "lastAccessed": 1772619397248,
+      "keyFiles": [
+        "entitlements.mac.plist",
+        "icon.icns",
+        "icon.ico",
+        "icon.ico.org",
+        "icon.png"
+      ]
+    },
+    "out": {
+      "path": "out",
+      "purpose": "Build output",
+      "fileCount": 0,
+      "lastAccessed": 1772619397252,
+      "keyFiles": []
+    },
+    "resources": {
+      "path": "resources",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1772619397290,
+      "keyFiles": [
+        "icon.png",
+        "logo_selltkey_red.ico",
+        "logo_selltkey_red.png"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 2,
+      "lastAccessed": 1772619397293,
+      "keyFiles": [
+        "delete-tag.sh",
+        "release.sh"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1772619397293,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [],
+  "userDirectives": []
+}

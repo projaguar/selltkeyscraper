@@ -331,7 +331,15 @@ export class CollectionService {
               // 베스트/신상품 필터링
               const bestList = data.smartStoreV2?.specialProducts?.bestProductNos ?? [];
               const newList = data.smartStoreV2?.specialProducts?.newProductNos ?? [];
-              const targetList = [...(result.bestyn === 'Y' ? bestList : []), ...(result.newyn === 'Y' ? newList : [])];
+              const best2List = data.productCollection.specialProducts.bestProductNos ?? [];
+              const new2List = data.productCollection.specialProducts.newProductNos ?? [];
+
+              const targetList = [
+                ...(bestList || []),
+                ...(result.newyn === 'Y' ? newList : []),
+                ...(best2List || []),
+                ...(result.newyn === 'Y' ? new2List : []),
+              ];
 
               if (targetList.length === 0) {
                 result.result.error = true;
@@ -371,7 +379,7 @@ export class CollectionService {
                       deliveryfee: item.productDeliveryInfo?.baseFee ?? 0,
                       nvcate: item.category?.categoryId || '',
                       imageurl: item.representativeImageUrl || '',
-                      goodsurl: `https://smartstore.naver.com/${data.smartStoreV2?.channel?.url || 'unknown'}/products/${item.id}`,
+                      goodsurl: `https://smartstore.naver.com/${data.smartStoreV2?.channel?.url || data.channel?.url || 'unknown'}/products/${item.id}`,
                       seoinfo: data.seoInfo?.sellerTags ?? '',
                     }));
                   }
