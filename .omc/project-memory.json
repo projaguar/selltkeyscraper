@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1772619397297,
+  "lastScanned": 1772776603819,
   "projectRoot": "/Users/projaguar/projects/selltkeyscraper",
   "techStack": {
     "languages": [
@@ -90,7 +90,7 @@
       "path": "_resources",
       "purpose": null,
       "fileCount": 12,
-      "lastAccessed": 1772619397045,
+      "lastAccessed": 1772776603759,
       "keyFiles": [
         "__next_data_.json",
         "api-search-all 결과처리.txt",
@@ -103,7 +103,7 @@
       "path": "_test",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1772619397053,
+      "lastAccessed": 1772776603761,
       "keyFiles": [
         "sourcingService_backup_20251014_014744.ts",
         "test.rest"
@@ -113,7 +113,7 @@
       "path": "build",
       "purpose": "Build output",
       "fileCount": 6,
-      "lastAccessed": 1772619397248,
+      "lastAccessed": 1772776603788,
       "keyFiles": [
         "entitlements.mac.plist",
         "icon.icns",
@@ -126,14 +126,14 @@
       "path": "out",
       "purpose": "Build output",
       "fileCount": 0,
-      "lastAccessed": 1772619397252,
+      "lastAccessed": 1772776603789,
       "keyFiles": []
     },
     "resources": {
       "path": "resources",
       "purpose": null,
       "fileCount": 3,
-      "lastAccessed": 1772619397290,
+      "lastAccessed": 1772776603790,
       "keyFiles": [
         "icon.png",
         "logo_selltkey_red.ico",
@@ -144,7 +144,7 @@
       "path": "scripts",
       "purpose": "Build/utility scripts",
       "fileCount": 2,
-      "lastAccessed": 1772619397293,
+      "lastAccessed": 1772776603791,
       "keyFiles": [
         "delete-tag.sh",
         "release.sh"
@@ -154,7 +154,7 @@
       "path": "src",
       "purpose": "Source code",
       "fileCount": 0,
-      "lastAccessed": 1772619397293,
+      "lastAccessed": 1772776603793,
       "keyFiles": []
     }
   },
