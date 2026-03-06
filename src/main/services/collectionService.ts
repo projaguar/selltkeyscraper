@@ -913,7 +913,34 @@ const collectNaverProducts = async (data: any, targetList: string[]): Promise<an
 
     const found8 = category?.A?.simpleProducts?.filter((item: any) => targetList.includes(item.id)) ?? [];
 
-    const combinedFound = [...found1, ...found2, ...found3, ...found4, ...found5, ...found6, ...found7, ...found8];
+    // 추가
+    const found9 =
+      data.bestProducts?.A?.bestProducts?.REALTIME?.simpleProducts?.filter((item) => targetList.includes(item.id)) ??
+      [];
+
+    const found10 =
+      data.bestProducts?.A?.bestProducts?.DAILY?.simpleProducts?.filter((item) => targetList.includes(item.id)) ?? [];
+
+    const found11 =
+      data.bestProducts?.A?.bestProducts?.WEEKLY?.simpleProducts?.filter((item) => targetList.includes(item.id)) ?? [];
+
+    const found12 =
+      data.bestProducts?.A?.bestProducts?.MONTHLY?.simpleProducts?.filter((item) => targetList.includes(item.id)) ?? [];
+
+    const combinedFound = [
+      ...found1,
+      ...found2,
+      ...found3,
+      ...found4,
+      ...found5,
+      ...found6,
+      ...found7,
+      ...found8,
+      ...found9,
+      ...found10,
+      ...found11,
+      ...found12,
+    ];
 
     // 중복 제거 및 유효성 검사
     const uniqueById = Array.from(
