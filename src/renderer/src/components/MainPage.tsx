@@ -4,6 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 
 const MainPage: React.FC = () => {
   const { logout, userInfo } = useAuth();
+  const [appVersion, setAppVersion] = useState('');
+
+  useEffect(() => {
+    window.api.getAppVersion().then((v: string) => setAppVersion(v));
+  }, []);
   const [isCollecting, setIsCollecting] = useState(false);
   const [isNaverLoggedIn, setIsNaverLoggedIn] = useState(false);
   const [isCheckingNaverLogin, setIsCheckingNaverLogin] = useState(true);
@@ -414,7 +419,7 @@ const MainPage: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">셀트키스크래퍼</h1>
             <p className="text-sm text-gray-600">스마트한 상품 수집 도구</p>
-            <span className="text-xs text-gray-400">2026.01.28</span>
+            <span className="text-xs text-gray-400">v{appVersion} ({__BUILD_DATE__})</span>
           </div>
           <Button
             variant="outline"

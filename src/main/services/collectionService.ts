@@ -195,6 +195,9 @@ export class CollectionService {
           break;
         }
 
+        // 최소화 상태면 브라우저 복원 (마우스 클릭/네비게이션이 정상 동작하도록)
+        await browserService.ensureBrowserVisible(page);
+
         // 블럭 페이지 체크
         const isBlockedPage = await BlockDetectionUtils.isBlockedPage(page);
         if (isBlockedPage) {
@@ -438,8 +441,8 @@ export class CollectionService {
           // 오류가 발생해도 다음 상품 처리 계속
         }
 
-        // 랜덤 지연 (15-20초)
-        const randomDelay = Math.floor(Math.random() * (20000 - 15000 + 1)) + 15000;
+        // 랜덤 지연 (7-11초)
+        const randomDelay = Math.floor(Math.random() * (11000 - 7000 + 1)) + 7000;
         console.log(
           `[CollectionService] 완료: ${item.TARGETSTORENAME} - 다음 대기 (${Math.floor(randomDelay / 1000)}초)`,
         );

@@ -1,6 +1,6 @@
 {
   "name": "selltkeyscraper",
-  "version": "0.0.64",
+  "version": "2.0.1",
   "description": "An Electron application with React and TypeScript",
   "main": "./out/main/index.js",
   "author": "selltkey.com",
@@ -17,6 +17,7 @@
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "bun run build && electron-builder --dir",
     "build:win": "bun run build && electron-builder --win --x64",
+    "build:portable-win": "bash scripts/build-portable-win.sh",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:macCertification": "set -a && source .env && set +a && electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",

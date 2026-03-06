@@ -3,6 +3,8 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
+const buildDate = new Date().toISOString().slice(0, 10).replace(/-/g, '.');
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
@@ -18,5 +20,8 @@ export default defineConfig({
       },
     },
     plugins: [react(), tailwindcss()],
+    define: {
+      __BUILD_DATE__: JSON.stringify(buildDate),
+    },
   },
 });

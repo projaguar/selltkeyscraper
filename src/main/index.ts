@@ -170,6 +170,9 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'));
 
+  // 앱 버전 조회
+  ipcMain.handle('get-app-version', () => app.getVersion());
+
   // 로그인 API
   ipcMain.handle('login', async (_, userId: string, password: string) => {
     try {

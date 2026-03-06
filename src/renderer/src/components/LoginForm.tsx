@@ -11,6 +11,11 @@ const LoginForm: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const { loginUser, loading } = useAuth();
+  const [appVersion, setAppVersion] = useState('');
+
+  useEffect(() => {
+    window.api.getAppVersion().then((v: string) => setAppVersion(v));
+  }, []);
 
   // 컴포넌트 마운트 시 저장된 인증 정보 로드
   useEffect(() => {
@@ -146,7 +151,7 @@ const LoginForm: React.FC = () => {
         {/* 푸터 */}
         <div className="text-center text-sm text-gray-500">
           <p>안전하고 편리한 로그인을 제공합니다</p>
-          <p>v2.0.0</p>
+          <p>v{appVersion}</p>
         </div>
       </div>
     </div>

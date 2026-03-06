@@ -196,10 +196,12 @@ html::after {
           '--no-sandbox',
           '--disable-setuid-sandbox',
 
-          // 네트워크 안정성 향상
+          // 최소화/백그라운드 시에도 작업 계속 진행
           '--disable-background-timer-throttling',
           '--disable-backgrounding-occluded-windows',
           '--disable-renderer-backgrounding',
+          '--disable-features=CalculateNativeWinOcclusion',
+          '--disable-hang-monitor',
           '--no-first-run',
           '--no-default-browser-check',
 
@@ -216,7 +218,6 @@ html::after {
           '--disable-component-update',
           '--disable-domain-reliability',
           '--disable-features=AudioServiceOutOfProcess',
-          '--disable-hang-monitor',
           '--disable-prompt-on-repost',
           '--disable-background-networking',
           '--disable-breakpad',
@@ -323,6 +324,16 @@ html::after {
       // Chrome 자동화 감지 플래그 제거
       const cdcProps = Object.keys(window).filter((key) => key.startsWith('cdc_'));
       cdcProps.forEach((prop) => delete (window as any)[prop]);
+
+      // 최소화/백그라운드 시에도 페이지가 활성 상태로 인식되도록 처리
+      Object.defineProperty(document, 'visibilityState', {
+        get: () => 'visible',
+        configurable: true,
+      });
+      Object.defineProperty(document, 'hidden', {
+        get: () => false,
+        configurable: true,
+      });
     });
 
     await page.setDefaultNavigationTimeout(30000);
@@ -353,6 +364,33 @@ html::after {
    */
   isCurrentPageValid(): boolean {
     return this.currentPage !== null && !this.currentPage.isClosed();
+  }
+
+  /**
+   * 브라우저 창이 최소화 상태인지 확인하고, 최소화되어 있으면 복원
+   * CDP(Chrome DevTools Protocol)로 창 상태를 직접 제어
+   */
+  async ensureBrowserVisible(page: Page): Promise<void> {
+    try {
+      const client = await page.createCDPSession();
+      const { windowId } = await client.send('Browser.getWindowForTarget');
+      const { bounds } = await client.send('Browser.getWindowBounds', { windowId });
+
+      if (bounds.windowState === 'minimized') {
+        console.log('[BrowserService] 브라우저 최소화 감지 - 복원 중...');
+        await client.send('Browser.setWindowBounds', {
+          windowId,
+          bounds: { windowState: 'normal' },
+        });
+        // 복원 후 렌더링 안정화 대기
+        await new Promise((r) => setTimeout(r, 500));
+        console.log('[BrowserService] 브라우저 복원 완료');
+      }
+
+      await client.detach();
+    } catch (error) {
+      console.error('[BrowserService] 브라우저 상태 확인 오류:', error);
+    }
   }
 
   /**

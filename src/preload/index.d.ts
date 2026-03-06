@@ -43,6 +43,7 @@ interface Api {
   } | null>;
   saveCredentials: (credentials: { email: string; password: string; rememberMe: boolean }) => Promise<boolean>;
   clearCredentials: () => Promise<boolean>;
+  getAppVersion: () => Promise<string>;
   startCollection: (usernum: string) => Promise<CollectionResponse>;
   stopCollection: () => Promise<CollectionResponse>;
   getCollectionProgress: () => Promise<{
