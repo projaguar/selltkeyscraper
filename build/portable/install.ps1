@@ -8,7 +8,7 @@ $Host.UI.RawUI.WindowTitle = "Selltkey Scraper - 초기 설정"
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Host "[!] 관리자 권한이 필요합니다. 권한을 요청합니다..."
-    Start-Process powershell.exe -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
     exit
 }
 
@@ -80,4 +80,4 @@ Write-Host '  바탕화면의 "Selltkey Scraper" 아이콘으로 실행하세요
 Write-Host "============================================"
 Write-Host ""
 Read-Host "Enter 키를 누르면 종료합니다"
-exit
+[Environment]::Exit(0)

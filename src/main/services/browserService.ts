@@ -368,23 +368,49 @@ html::after {
 
   /**
    * 브라우저 창이 최소화 상태인지 확인하고, 최소화되어 있으면 복원
+   * 또한 창 크기가 최소 사이즈 미만이면 자동으로 확대 (클릭 시뮬레이션용 링크가 보이도록)
    * CDP(Chrome DevTools Protocol)로 창 상태를 직접 제어
    */
   async ensureBrowserVisible(page: Page): Promise<void> {
+    const MIN_WIDTH = 400;
+    const MIN_HEIGHT = 300;
+
     try {
       const client = await page.createCDPSession();
       const { windowId } = await client.send('Browser.getWindowForTarget');
       const { bounds } = await client.send('Browser.getWindowBounds', { windowId });
 
+      let needsWait = false;
+
+      // 1. 최소화 상태면 복원
       if (bounds.windowState === 'minimized') {
         console.log('[BrowserService] 브라우저 최소화 감지 - 복원 중...');
         await client.send('Browser.setWindowBounds', {
           windowId,
           bounds: { windowState: 'normal' },
         });
-        // 복원 후 렌더링 안정화 대기
-        await new Promise((r) => setTimeout(r, 500));
+        needsWait = true;
         console.log('[BrowserService] 브라우저 복원 완료');
+      }
+
+      // 2. 창 크기가 최소 사이즈 미만이면 확대
+      const currentWidth = bounds.width ?? 0;
+      const currentHeight = bounds.height ?? 0;
+
+      if (currentWidth < MIN_WIDTH || currentHeight < MIN_HEIGHT) {
+        const newWidth = Math.max(currentWidth, MIN_WIDTH);
+        const newHeight = Math.max(currentHeight, MIN_HEIGHT);
+        console.log(`[BrowserService] 창 크기 부족 (${currentWidth}x${currentHeight}) - 최소 ${newWidth}x${newHeight}로 조정`);
+        await client.send('Browser.setWindowBounds', {
+          windowId,
+          bounds: { width: newWidth, height: newHeight },
+        });
+        needsWait = true;
+      }
+
+      // 복원/리사이즈 후 렌더링 안정화 대기
+      if (needsWait) {
+        await new Promise((r) => setTimeout(r, 500));
       }
 
       await client.detach();

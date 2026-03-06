@@ -273,7 +273,6 @@ export class CollectionService {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000,
               });
-              await delay(1000); // 메인 페이지 로딩 대기
               console.log('[CollectionService] 옥션 메인 페이지 이동 완료');
             } else {
               console.log('[CollectionService] 이미 옥션 사이트 내에 있음, 메인 페이지 이동 스킵');
@@ -314,7 +313,6 @@ export class CollectionService {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000,
               });
-              await delay(1000); // 메인 페이지 로딩 대기
               console.log('[CollectionService] 네이버 메인 페이지 이동 완료');
             } else {
               console.log('[CollectionService] 이미 네이버 사이트 내에 있음, 메인 페이지 이동 스킵');
@@ -446,28 +444,6 @@ export class CollectionService {
         console.log(
           `[CollectionService] 완료: ${item.TARGETSTORENAME} - 다음 대기 (${Math.floor(randomDelay / 1000)}초)`,
         );
-
-        // 30% 확률로 자연스러운 스크롤 수행
-        // const randomValue = Math.random();
-        // if (randomValue < 0.3) {
-        //   console.log(`[CollectionService] 자연스러운 스크롤 수행`);
-        //   try {
-        //     await AntiDetectionUtils.simulateScroll(page);
-        //     console.log(`[CollectionService] 스크롤 시뮬레이션 완료`);
-        //   } catch (error) {
-        //     console.error(`[CollectionService] 스크롤 시뮬레이션 오류:`, error);
-        //   }
-        // }
-
-        // 봇 디텍션 데이터 정리
-        this.progress.status = '봇 감지 데이터 정리 중...';
-        console.log('[CollectionService] 봇 디텍션 데이터 정리 시작');
-        try {
-          await AntiDetectionUtils.cleanupBotDetectionData(page);
-          console.log('[CollectionService] 봇 디텍션 데이터 정리 완료');
-        } catch (error) {
-          console.error('[CollectionService] 봇 디텍션 데이터 정리 중 오류:', error);
-        }
 
         // 대기시간 카운팅
         this.progress.status = `다음 상품 대기 중... (${Math.floor(randomDelay / 1000)}초)`;
@@ -659,7 +635,7 @@ const getGoodsUrlList = async (userNum: string): Promise<any> => {
     .then((res) => res.data);
 };
 
-// 기본 유틸리티 함수들 (향후 사용 예정)
+// 유틸리티 함수들
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ========================================
@@ -872,51 +848,8 @@ const getAuctionGoodsList = async (url: string, page: any): Promise<any> => {
 const getNaverGoodsList = async (url: string, page: any): Promise<any> => {
   try {
     console.log(`[CollectionService] 네이버 상품 페이지 접근: ${url}`);
-    // 자연스러운 네비게이션 사용
+    // 자연스러운 네비게이션 사용 (봇 감지 회피)
     await navigateToUrlNaturally(url, page);
-
-    // CAPTCHA 체크 및 대기
-    let isCaptchaPage = false;
-    try {
-      const pageInfo = await page.evaluate(() => {
-        const captchaScript = document.querySelector('script[src*="wtm_captcha.js"]');
-        const captchaFrame = document.querySelector('iframe[src*="captcha"]');
-        const captchaContainer = document.querySelector('.captcha_container');
-        const loginForm = document.querySelector('#frmNIDLogin');
-
-        return {
-          hasCaptchaScript: !!captchaScript,
-          hasCaptchaFrame: !!captchaFrame,
-          hasCaptchaContainer: !!captchaContainer,
-          hasLoginForm: !!loginForm,
-        };
-      });
-
-      isCaptchaPage =
-        (pageInfo.hasCaptchaScript || pageInfo.hasCaptchaFrame || pageInfo.hasCaptchaContainer) &&
-        pageInfo.hasLoginForm;
-
-      if (isCaptchaPage) {
-        console.log('[CollectionService] CAPTCHA 감지됨, 대기 중...');
-        // CAPTCHA 완료 대기
-        await page.waitForFunction(
-          () => {
-            const captchaScript = document.querySelector('script[src*="wtm_captcha.js"]');
-            const captchaFrame = document.querySelector('iframe[src*="captcha"]');
-            const captchaContainer = document.querySelector('.captcha_container');
-            const loginForm = document.querySelector('#frmNIDLogin');
-            const currentUrl = window.location.href;
-            const isSuccessUrl = currentUrl.search('smartstore.naver.com') !== -1;
-
-            return !captchaScript && !captchaFrame && !captchaContainer && (!loginForm || isSuccessUrl);
-          },
-          { timeout: 300000 },
-        );
-      }
-    } catch (error) {
-      console.log('[CollectionService] CAPTCHA 체크 중 오류:', error);
-    }
-
     // __PRELOADED_STATE__ 데이터 추출
     const data: any = await page.evaluate(() => {
       return (globalThis as any).window.__PRELOADED_STATE__;
