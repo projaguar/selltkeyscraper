@@ -8,6 +8,7 @@ import { browserService } from './browserService';
 import { CaptchaUtils } from '../utils/captchaUtils';
 import { BlockDetectionUtils } from '../utils/blockDetectionUtils';
 import { AntiDetectionUtils } from '../utils/antiDetectionUtils';
+import { extractNaverProductNos, collectNaverProducts, mapNaverProduct } from '@open-nest/utils-selltkey';
 
 export interface CollectionResult {
   success: boolean;
@@ -333,17 +334,7 @@ export class CollectionService {
               result.result.list = [];
             } else {
               // 베스트/신상품 필터링
-              const bestList = data.smartStoreV2?.specialProducts?.bestProductNos ?? [];
-              const newList = data.smartStoreV2?.specialProducts?.newProductNos ?? [];
-              const best2List = data.productCollection.specialProducts.bestProductNos ?? [];
-              const new2List = data.productCollection.specialProducts.newProductNos ?? [];
-
-              const targetList = [
-                ...(bestList || []),
-                ...(result.newyn === 'Y' ? newList : []),
-                ...(best2List || []),
-                ...(result.newyn === 'Y' ? new2List : []),
-              ];
+              const targetList = extractNaverProductNos(data, result.newyn);
 
               if (targetList.length === 0) {
                 result.result.error = true;
@@ -351,7 +342,7 @@ export class CollectionService {
                 result.result.list = [];
               } else {
                 // 상품 데이터 수집 및 필터링
-                const combinedFound = await collectNaverProducts(data, targetList);
+                const combinedFound = collectNaverProducts(data, targetList);
 
                 if (combinedFound.length === 0) {
                   result.result.error = true;
@@ -374,18 +365,7 @@ export class CollectionService {
                   } else {
                     result.result.error = false;
                     result.result.errorMsg = '수집성공';
-                    result.result.list = nameFiltered.map((item: any) => ({
-                      goodscode: item.id,
-                      goodsname: item.name,
-                      saleprice: item.salePrice,
-                      discountsaleprice: item.benefitsView?.discountedSalePrice || item.salePrice,
-                      discountrate: item.benefitsView?.discountedRatio || 0,
-                      deliveryfee: item.productDeliveryInfo?.baseFee ?? 0,
-                      nvcate: item.category?.categoryId || '',
-                      imageurl: item.representativeImageUrl || '',
-                      goodsurl: `https://smartstore.naver.com/${data.smartStoreV2?.channel?.url || data.channel?.url || 'unknown'}/products/${item.id}`,
-                      seoinfo: data.seoInfo?.sellerTags ?? '',
-                    }));
+                    result.result.list = nameFiltered.map((item: any) => mapNaverProduct(item, data));
                   }
                 }
               }
@@ -868,95 +848,7 @@ const getNaverGoodsList = async (url: string, page: any): Promise<any> => {
   }
 };
 
-/**
- * 네이버 상품 데이터 수집 및 조합
- */
-const collectNaverProducts = async (data: any, targetList: string[]): Promise<any[]> => {
-  try {
-    // 안전한 데이터 접근
-    const widgetContents = data?.widgetContents || {};
-    const category = data?.category || {};
-
-    const found1 =
-      widgetContents.bestProductWidget?.A?.data?.bestProducts?.REALTIME?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found2 =
-      widgetContents.bestProductWidget?.A?.data?.bestProducts?.DAILY?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found3 =
-      widgetContents.bestProductWidget?.A?.data?.bestProducts?.WEEKLY?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found4 =
-      widgetContents.bestProductWidget?.A?.data?.bestProducts?.MONTHLY?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found5 =
-      widgetContents?.bestProductWidget?.A?.data?.allCategoryProducts?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found6 =
-      widgetContents?.bestReviewWidget?.A?.data?.reviewProducts?.filter((item: any) => targetList.includes(item.id)) ??
-      [];
-
-    const found7 =
-      widgetContents?.wholeProductWidget?.A?.data?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found8 = category?.A?.simpleProducts?.filter((item: any) => targetList.includes(item.id)) ?? [];
-
-    // 추가
-    const found9 =
-      data.bestProducts?.A?.bestProducts?.REALTIME?.simpleProducts?.filter((item) => targetList.includes(item.id)) ??
-      [];
-
-    const found10 =
-      data.bestProducts?.A?.bestProducts?.DAILY?.simpleProducts?.filter((item) => targetList.includes(item.id)) ?? [];
-
-    const found11 =
-      data.bestProducts?.A?.bestProducts?.WEEKLY?.simpleProducts?.filter((item) => targetList.includes(item.id)) ?? [];
-
-    const found12 =
-      data.bestProducts?.A?.bestProducts?.MONTHLY?.simpleProducts?.filter((item) => targetList.includes(item.id)) ?? [];
-
-    const combinedFound = [
-      ...found1,
-      ...found2,
-      ...found3,
-      ...found4,
-      ...found5,
-      ...found6,
-      ...found7,
-      ...found8,
-      ...found9,
-      ...found10,
-      ...found11,
-      ...found12,
-    ];
-
-    // 중복 제거 및 유효성 검사
-    const uniqueById = Array.from(
-      combinedFound
-        .filter((item: any) => item && item.id) // 유효한 아이템만 필터링
-        .reduce((map: any, item: any) => map.set(item.id, item), new Map())
-        .values(),
-    );
-
-    console.log(`[CollectionService] 상품 수집 결과: ${uniqueById.length}개 (대상: ${targetList.length}개)`);
-    return uniqueById;
-  } catch (error) {
-    console.error('[CollectionService] 상품 데이터 수집 오류:', error);
-    return [];
-  }
-};
+// collectNaverProducts는 @open-nest/utils-selltkey에서 import
 
 // /v1/product-collect/relay-naver-goods
 /**
