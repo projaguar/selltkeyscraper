@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1772776603819,
+  "lastScanned": 1773132615626,
   "projectRoot": "/Users/projaguar/projects/selltkeyscraper",
   "techStack": {
     "languages": [
@@ -58,6 +58,7 @@
       "postinstall": "electron-builder install-app-deps",
       "build:unpack": "bun run build && electron-builder --dir",
       "build:win": "bun run build && electron-builder --win --x64",
+      "build:portable-win": "bash scripts/build-portable-win.sh",
       "build:mac": "electron-vite build && electron-builder --mac",
       "build:macCertification": "set -a && source .env && set +a && electron-vite build && electron-builder --mac",
       "build:linux": "electron-vite build && electron-builder --linux",
@@ -90,7 +91,7 @@
       "path": "_resources",
       "purpose": null,
       "fileCount": 12,
-      "lastAccessed": 1772776603759,
+      "lastAccessed": 1773132615490,
       "keyFiles": [
         "__next_data_.json",
         "api-search-all 결과처리.txt",
@@ -103,7 +104,7 @@
       "path": "_test",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1772776603761,
+      "lastAccessed": 1773132615491,
       "keyFiles": [
         "sourcingService_backup_20251014_014744.ts",
         "test.rest"
@@ -112,8 +113,8 @@
     "build": {
       "path": "build",
       "purpose": "Build output",
-      "fileCount": 6,
-      "lastAccessed": 1772776603788,
+      "fileCount": 7,
+      "lastAccessed": 1773132615607,
       "keyFiles": [
         "entitlements.mac.plist",
         "icon.icns",
@@ -122,18 +123,29 @@
         "icon.png"
       ]
     },
+    "dist": {
+      "path": "dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 4,
+      "lastAccessed": 1773132615611,
+      "keyFiles": [
+        "builder-debug.yml",
+        "builder-effective-config.yaml",
+        "selltkeyscraper-2.0.1-portable-win.zip"
+      ]
+    },
     "out": {
       "path": "out",
       "purpose": "Build output",
       "fileCount": 0,
-      "lastAccessed": 1772776603789,
+      "lastAccessed": 1773132615613,
       "keyFiles": []
     },
     "resources": {
       "path": "resources",
       "purpose": null,
       "fileCount": 3,
-      "lastAccessed": 1772776603790,
+      "lastAccessed": 1773132615613,
       "keyFiles": [
         "icon.png",
         "logo_selltkey_red.ico",
@@ -143,9 +155,10 @@
     "scripts": {
       "path": "scripts",
       "purpose": "Build/utility scripts",
-      "fileCount": 2,
-      "lastAccessed": 1772776603791,
+      "fileCount": 3,
+      "lastAccessed": 1773132615613,
       "keyFiles": [
+        "build-portable-win.sh",
         "delete-tag.sh",
         "release.sh"
       ]
@@ -154,10 +167,65 @@
       "path": "src",
       "purpose": "Source code",
       "fileCount": 0,
-      "lastAccessed": 1772776603793,
+      "lastAccessed": 1773132615615,
       "keyFiles": []
     }
   },
-  "hotPaths": [],
+  "hotPaths": [
+    {
+      "path": "tsconfig.node.json",
+      "accessCount": 3,
+      "lastAccessed": 1773132855894,
+      "type": "file"
+    },
+    {
+      "path": "src/main",
+      "accessCount": 2,
+      "lastAccessed": 1773132765530,
+      "type": "directory"
+    },
+    {
+      "path": "src/main/services/collectionService.ts",
+      "accessCount": 1,
+      "lastAccessed": 1773132696771,
+      "type": "file"
+    },
+    {
+      "path": "tsconfig.json",
+      "accessCount": 1,
+      "lastAccessed": 1773132743063,
+      "type": "file"
+    },
+    {
+      "path": "tsconfig.web.json",
+      "accessCount": 1,
+      "lastAccessed": 1773132743892,
+      "type": "file"
+    },
+    {
+      "path": "src/preload",
+      "accessCount": 1,
+      "lastAccessed": 1773132766125,
+      "type": "directory"
+    },
+    {
+      "path": "RELEASE.md",
+      "accessCount": 1,
+      "lastAccessed": 1773133059582,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 1,
+      "lastAccessed": 1773133060698,
+      "type": "directory"
+    },
+    {
+      "path": "scripts/release.sh",
+      "accessCount": 1,
+      "lastAccessed": 1773133065098,
+      "type": "file"
+    }
+  ],
   "userDirectives": []
 }

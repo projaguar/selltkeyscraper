@@ -5,10 +5,6 @@
     "composite": true,
     "moduleResolution": "bundler",
     "types": ["electron-vite/node"],
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/renderer/src/*"]
-    },
     // 더 루즈한 TypeScript 설정
     "strict": false,
     "noImplicitAny": false,

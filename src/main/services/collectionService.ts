@@ -8,7 +8,7 @@ import { browserService } from './browserService';
 import { CaptchaUtils } from '../utils/captchaUtils';
 import { BlockDetectionUtils } from '../utils/blockDetectionUtils';
 import { AntiDetectionUtils } from '../utils/antiDetectionUtils';
-import { extractNaverProductNos, collectNaverProducts, mapNaverProduct } from '@open-nest/utils-selltkey';
+import { gzipSync } from 'node:zlib';
 
 export interface CollectionResult {
   success: boolean;
@@ -257,166 +257,133 @@ export class CollectionService {
           newyn: item.NEWYN,
           result: { error: false, errorMsg: '', list: [] },
         };
+        let rawData: any = null;
+        let postSucceeded = false;
 
         try {
-          // 플랫폼별 분기 처리
           if (item.URLPLATFORMS === 'AUCTION') {
             console.log('[CollectionService] AUCTION 상품 처리 시작');
 
-            // 블록 시스템 회피: 옥션 사이트에 처음 진입할 때만 메인 페이지로 이동
             const currentUrl = page.url();
-            const isAlreadyOnAuction = currentUrl.includes('auction.co.kr');
-
-            if (!isAlreadyOnAuction) {
+            if (!currentUrl.includes('auction.co.kr')) {
               console.log('[CollectionService] 옥션 메인 페이지로 이동 중... (크로스 도메인)');
-              // 크로스 도메인 이동은 일반 goto 사용 (더 안정적)
               await page.goto('https://www.auction.co.kr', {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000,
               });
               console.log('[CollectionService] 옥션 메인 페이지 이동 완료');
-            } else {
-              console.log('[CollectionService] 이미 옥션 사이트 내에 있음, 메인 페이지 이동 스킵');
             }
 
-            const goods = await getAuctionGoodsList(item.TARGETURL, page);
-
-            if (goods.length === 0) {
+            rawData = await getAuctionGoodsList(item.TARGETURL, page);
+            if (!rawData) {
               result.result.error = true;
-              result.result.errorMsg = '상품 없음';
+              result.result.errorMsg = '데이터 로드 실패';
               result.result.list = [];
-            } else {
-              // 해외배송 상품 체크 (JSON 데이터에서 직접 확인)
-              const isOversea = goods.some((item: any) => item.isOverseas === true);
-              console.log(`[CollectionService] 해외직구 상품 확인: ${isOversea}`);
-
-              if (isOversea) {
-                result.result.error = false;
-                result.result.errorMsg = '수집성공';
-                result.result.list = goods;
-              } else {
-                result.result.error = true;
-                result.result.errorMsg = '국내사업자입니다.';
-                result.result.list = [];
-              }
             }
           } else if (item.URLPLATFORMS === 'NAVER') {
             console.log('[CollectionService] NAVER 상품 처리 시작');
 
-            // 블록 시스템 회피: 네이버 사이트에 처음 진입할 때만 메인 페이지로 이동
             const currentUrl = page.url();
-            const isAlreadyOnNaver = currentUrl.includes('naver.com');
-
-            if (!isAlreadyOnNaver) {
+            if (!currentUrl.includes('naver.com')) {
               console.log('[CollectionService] 네이버 메인 페이지로 이동 중... (크로스 도메인)');
-              // 크로스 도메인 이동은 일반 goto 사용 (더 안정적)
               await page.goto('https://www.naver.com', {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000,
               });
               console.log('[CollectionService] 네이버 메인 페이지 이동 완료');
-            } else {
-              console.log('[CollectionService] 이미 네이버 사이트 내에 있음, 메인 페이지 이동 스킵');
             }
 
-            const data = await getNaverGoodsList(item.TARGETURL, page);
-            // 데이터 유효성 검사
-            if (!data) {
+            rawData = await getNaverGoodsList(item.TARGETURL, page);
+            if (!rawData) {
               result.result.error = true;
               result.result.errorMsg = '데이터 로드 실패';
               result.result.list = [];
-            } else if (
-              (data.channel && data.channel?.channelExternalStatusType !== 'NORMAL') ||
-              (data.categoryTree && (!data.categoryTree?.A || Object.keys(data.categoryTree?.A).length === 0))
-            ) {
-              result.result.error = true;
-              result.result.errorMsg = '운영중이 아님';
-              result.result.list = [];
-            } else {
-              // 베스트/신상품 필터링
-              const targetList = extractNaverProductNos(data, result.newyn);
-
-              if (targetList.length === 0) {
-                result.result.error = true;
-                result.result.errorMsg = '베스트 상품이 없음';
-                result.result.list = [];
-              } else {
-                // 상품 데이터 수집 및 필터링
-                const combinedFound = collectNaverProducts(data, targetList);
-
-                if (combinedFound.length === 0) {
-                  result.result.error = true;
-                  result.result.errorMsg = '수집된 상품 데이터 없음';
-                  result.result.list = [];
-                } else {
-                  const spricelimit: number = +item.SPRICELIMIT;
-                  const epricelimit: number = +item.EPRICELIMIT;
-
-                  const priceFiltered = combinedFound.filter(
-                    (item: any) => item.salePrice >= spricelimit && item.salePrice <= epricelimit,
-                  );
-
-                  const nameFiltered = priceFiltered.filter((item: any) => Boolean(item.name));
-
-                  if (nameFiltered.length === 0) {
-                    result.result.error = true;
-                    result.result.errorMsg = '가격/이름 필터링 후 상품 없음';
-                    result.result.list = [];
-                  } else {
-                    result.result.error = false;
-                    result.result.errorMsg = '수집성공';
-                    result.result.list = nameFiltered.map((item: any) => mapNaverProduct(item, data));
-                  }
-                }
-              }
             }
           } else {
             console.log('[CollectionService] 처리 제외 플랫폼:', item.URLPLATFORMS);
             continue;
           }
 
-          // 결과 데이터 API 전송
-          console.log('[CollectionService] 결과 데이터 전송:', result);
-          const resPost = await postGoodsList(
-            // {
-            //   properties: {
-            //     urlnum: item.URLNUM,
-            //     usernum: usernum,
-            //     platforms: item.URLPLATFORMS,
-            //     spricelimit: item.SPRICELIMIT,
-            //     epricelimit: item.EPRICELIMIT,
-            //     inserturl: insertUrl,
-            //     jsonstring: result,
-            //   },
-            //   params: { isParsed: true },
-            // },
-            {
-              data: result,
+          // raw data → 서버에서 파싱 / 에러 시 isParsed: true
+          let postPayload: any;
+          if (rawData) {
+            postPayload = {
+              data: rawData,
+              context: {
+                isParsed: false,
+                inserturl: insertUrl,
+                urlnum: item.URLNUM,
+                usernum: usernum,
+                spricelimit: item.SPRICELIMIT,
+                epricelimit: item.EPRICELIMIT,
+                platforms: item.URLPLATFORMS,
+                bestyn: item.BESTYN,
+                newyn: item.NEWYN,
+              },
+            };
+          } else {
+            postPayload = {
+              data: {
+                urlnum: item.URLNUM,
+                usernum: usernum,
+                spricelimit: item.SPRICELIMIT,
+                epricelimit: item.EPRICELIMIT,
+                platforms: item.URLPLATFORMS,
+                bestyn: item.BESTYN,
+                newyn: item.NEWYN,
+                result: result.result,
+              },
               context: {
                 isParsed: true,
                 inserturl: insertUrl,
               },
-            },
-            item.URLPLATFORMS,
-          );
+            };
+          }
 
-          // 오늘 처리 횟수 초과 체크
+          console.log('[CollectionService] 결과 데이터 전송');
+          const resPost = await postGoodsList(postPayload, item.URLPLATFORMS);
+          postSucceeded = true;
+
           if (resPost.todayStop) {
             throw new Error('오늘 처리 횟수가 초과 되었습니다.');
           }
 
-          const transmittedCount = Array.isArray(result.result.list) ? result.result.list.length : 0;
+          const urlcount = resPost.urlcount || 0;
           this.addLog(
-            `결과 전송 완료 - ${item.TARGETSTORENAME} (${item.URLPLATFORMS}) (${this.progress.current}/${this.progress.total}, 전송 ${transmittedCount}건)`,
+            `결과 전송 완료 - ${item.TARGETSTORENAME} (${item.URLPLATFORMS}) ${urlcount}개 수집 (${this.progress.current}/${this.progress.total})`,
           );
         } catch (error) {
           console.error('[CollectionService] 개별 상품 처리 오류:', error);
-          const transmittedCount = Array.isArray(result.result.list) ? result.result.list.length : 0;
           const errorMessage = error instanceof Error ? error.message : String(error);
+
+          // 아직 서버에 전송하지 않은 경우 에러 결과 전송
+          if (!postSucceeded) {
+            try {
+              const errorPayload = {
+                data: {
+                  urlnum: item.URLNUM,
+                  usernum: usernum,
+                  spricelimit: item.SPRICELIMIT,
+                  epricelimit: item.EPRICELIMIT,
+                  platforms: item.URLPLATFORMS,
+                  bestyn: item.BESTYN,
+                  newyn: item.NEWYN,
+                  result: { error: true, errorMsg: errorMessage, list: [] },
+                },
+                context: {
+                  isParsed: true,
+                  inserturl: insertUrl,
+                },
+              };
+              await postGoodsList(errorPayload, item.URLPLATFORMS);
+            } catch (postError) {
+              console.error('[CollectionService] 에러 결과 전송 실패:', postError);
+            }
+          }
+
           this.addLog(
-            `❗ 결과 전송 실패 - ${item.URLPLATFORMS} (${this.progress.current}/${this.progress.total}, 전송 ${transmittedCount}건) - ${errorMessage}`,
+            `❗ 처리 실패 - ${item.TARGETSTORENAME} (${item.URLPLATFORMS}) (${this.progress.current}/${this.progress.total}) - ${errorMessage}`,
           );
-          // 오류가 발생해도 다음 상품 처리 계속
         }
 
         // 랜덤 지연 (7-11초)
@@ -712,114 +679,27 @@ const urlsMatch = (currentUrl: string, targetUrl: string): boolean => {
  * 옥션 상품 목록 수집
  */
 const getAuctionGoodsList = async (url: string, page: any): Promise<any> => {
-  console.log(`[getAuctionGoodsList] 페이지 네비게이션 시작: ${url}`);
-
-  // 옥션 메인 페이지를 거쳐서 왔으므로 일반 goto 사용 (블록 회피 완료)
   try {
+    console.log(`[CollectionService] 옥션 상품 페이지 접근: ${url}`);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    console.log('[getAuctionGoodsList] 페이지 이동 완료 (goto)');
+
+    const textContent = await page.evaluate(() => {
+      const element = document.getElementById('__NEXT_DATA__');
+      return element?.textContent ?? null;
+    });
+
+    if (!textContent) {
+      console.error('[CollectionService] __NEXT_DATA__ 데이터가 없습니다.');
+      return null;
+    }
+
+    const data = JSON.parse(textContent);
+    console.log('[CollectionService] 옥션 상품 데이터 로드 완료');
+    return data;
   } catch (error) {
-    console.error('[getAuctionGoodsList] 페이지 이동 실패:', error);
-    throw error;
+    console.error('[CollectionService] 옥션 상품 목록 수집 오류:', error);
+    return null;
   }
-
-  const textContent = await page.evaluate(() => {
-    const element = document.getElementById('__NEXT_DATA__');
-    return element?.textContent ?? null;
-  });
-
-  if (!textContent) {
-    console.error('[getAuctionGoodsList] __NEXT_DATA__ 엘리먼트를 찾을 수 없습니다.');
-    throw new Error('__NEXT_DATA__ element not found');
-  }
-
-  const data = JSON.parse(textContent);
-
-  // 새로운 데이터 구조: regionsData.content.modules
-  const modules = data.props?.pageProps?.initialStates?.curatorData?.regionsData?.content?.modules;
-
-  if (!modules) {
-    console.error('[getAuctionGoodsList] 옥션 데이터 구조를 찾을 수 없습니다.');
-    return [];
-  }
-
-  const list = modules.reduce((acc: any, module: any) => {
-    const subList = module.rows.reduce((acc: any, curr: any) => {
-      if (curr.designName === 'ItemCardGeneral') {
-        const payCountText = curr.viewModel.score?.payCount?.text ?? '0';
-        if (payCountText === '0') {
-          return acc;
-        }
-
-        const salePrice = Number((curr.viewModel.price.price?.text ?? '0').replace(/,/g, ''));
-        const discountsaleprice = curr.viewModel.price.couponDiscountedBinPrice
-          ? Number((curr.viewModel.price.couponDiscountedBinPrice ?? '0').replace(/,/g, ''))
-          : salePrice;
-        const discountrate = curr.viewModel.price.discountRate
-          ? Number((curr.viewModel.price.discountRate ?? '0').replace(/,/g, ''))
-          : 0;
-
-        // 배송비 추출 로직 (무료배송 체크 → deliveryTags 확인 → tags 확인)
-        let deliveryfee = 0;
-
-        // 1. 무료배송 플래그 확인
-        if (curr.viewModel.isFreeDelivery) {
-          deliveryfee = 0;
-        } else {
-          // 2. deliveryTags에서 배송비 확인 (새로운 구조)
-          const deliveryTag = curr.viewModel.deliveryTags?.find(
-            (tag: any) => tag.text?.text && tag.text.text.includes('배송비'),
-          );
-          if (deliveryTag?.text?.text) {
-            const match = deliveryTag.text.text.match(/(\d{1,3}(,\d{3})*)/);
-            if (match) {
-              deliveryfee = Number(match[0].replace(/,/g, ''));
-            }
-          }
-
-          // 3. 기존 tags에서 배송비 확인 (폴백)
-          if (deliveryfee === 0) {
-            const tag = curr.viewModel.tags?.find((tag: string) => tag.startsWith('배송비'));
-            if (tag) {
-              const match = tag.match(/(\d{1,3}(,\d{3})*)/);
-              if (match) {
-                deliveryfee = Number(match[0].replace(/,/g, ''));
-              }
-            }
-          }
-        }
-
-        // 해외직구 여부 확인
-        const isOverseas =
-          curr.viewModel.sellerOfficialTag?.title?.some((item: any) => item.text === '해외직구') || false;
-
-        return [
-          ...acc,
-          {
-            goodscode: curr.viewModel.itemNo,
-            goodsname: curr.viewModel.item.text,
-            imageurl: curr.viewModel.item.imageUrl,
-            goodsurl: curr.viewModel.item.link,
-            salePrice,
-            discountsaleprice,
-            discountrate,
-            deliveryfee,
-            seoinfo: '',
-            nvcate: '',
-            isOverseas,
-          },
-        ];
-      }
-      return acc;
-    }, []);
-    return [...acc, ...subList];
-  }, []);
-
-  const result = Array.from(list.reduce((map: any, item: any) => map.set(item.goodscode, item), new Map()).values());
-  const overseasCount = result.filter((item: any) => item.isOverseas === true).length;
-  console.log(`[getAuctionGoodsList] 수집 완료: 총 ${result.length}개 (해외직구 ${overseasCount}개)`);
-
-  return result;
 };
 
 /**
@@ -848,18 +728,15 @@ const getNaverGoodsList = async (url: string, page: any): Promise<any> => {
   }
 };
 
-// collectNaverProducts는 @open-nest/utils-selltkey에서 import
-
 // /v1/product-collect/relay-naver-goods
 /**
  * 결과 데이터 API 전송
  */
 const postGoodsList = (data: any, platform: 'NAVER' | 'AUCTION'): Promise<any> => {
-  // const url = `${process.env.URL_API ?? 'https://api.opennest.co.kr/api/v2'}/restful/ovse/relay-${platform.toLowerCase()}-goods`;
   const url = `${process.env.URL_API ?? 'https://api.opennest.co.kr/selltkey/v1'}/product-collect/relay-${platform.toLowerCase()}-goods`;
 
-  console.log('URL', url);
-  console.log('DATA', JSON.stringify(data, null, 2)); // 데이터가 너무 길 경우 일부만 출력
+  const jsonBuffer = Buffer.from(JSON.stringify(data));
+  const compressed = gzipSync(jsonBuffer);
 
   return axios
     .request({
@@ -867,8 +744,11 @@ const postGoodsList = (data: any, platform: 'NAVER' | 'AUCTION'): Promise<any> =
       url,
       headers: {
         'Content-Type': 'application/json',
+        'Content-Encoding': 'gzip',
       },
-      data,
+      data: compressed,
+      transformRequest: [(d: any) => d],
+      maxBodyLength: Infinity,
     })
     .then((res) => res.data);
 };
