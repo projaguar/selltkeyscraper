@@ -3,6 +3,7 @@ import { electronAPI } from '@electron-toolkit/preload';
 
 // Custom APIs for renderer
 const api = {
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   login: (userId: string, password: string) => ipcRenderer.invoke('login', userId, password),
   getSavedCredentials: () => ipcRenderer.invoke('get-saved-credentials'),
   saveCredentials: (credentials: { email: string; password: string; rememberMe: boolean }) =>

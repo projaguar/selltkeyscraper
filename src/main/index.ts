@@ -58,6 +58,10 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'));
 
   // 로그인 API
+  ipcMain.handle('get-app-version', () => {
+    return app.getVersion();
+  });
+
   ipcMain.handle('login', async (_, userId: string, password: string) => {
     try {
       const response = await axios.request({

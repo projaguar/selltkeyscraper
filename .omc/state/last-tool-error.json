@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"git checkout -b blue-version v0.0.53\",\"description\":\"Create blue-version branch from v0.0.53 tag\"}",
+  "error": "Exit code 1\nerror: Your local changes to the following files would be overwritten by checkout:\n\t.omc/state/hud-stdin-cache.json\n\t.omc/state/idle-notif-cooldown.json\nPlease commit your changes or stash them before you switch branches.\nAborting\n\nerror: Your local changes to the following files would be overwritten by checkout:\n\t.omc/state/hud-stdin-cache.json\n\t.omc/state/idle-notif-cooldown.json\nPlease commit your changes or stash them before you switch branches.\nAborting",
+  "timestamp": "2026-03-10T09:03:34.206Z",
+  "retry_count": 1
+}

@@ -8,6 +8,7 @@ import { browserService } from './browserService';
 import { CaptchaUtils } from '../utils/captchaUtils';
 import { BlockDetectionUtils } from '../utils/blockDetectionUtils';
 import { AntiDetectionUtils } from '../utils/antiDetectionUtils';
+import { gzipSync } from 'node:zlib';
 
 export interface CollectionResult {
   success: boolean;
@@ -220,136 +221,111 @@ export class CollectionService {
           newyn: item.NEWYN,
           result: { error: false, errorMsg: '', list: [] },
         };
+        let rawData: any = null;
+        let postSucceeded = false;
 
         try {
-          // 플랫폼별 분기 처리
           if (item.URLPLATFORMS === 'AUCTION') {
             console.log('[CollectionService] AUCTION 상품 처리 시작');
-            const goods = await getAuctionGoodsList(item.TARGETURL, page);
-
-            if (goods.length === 0) {
-              result.result.error = true;
-              result.result.errorMsg = '상품 없음';
-              result.result.list = [];
-            } else {
-              // 해외배송 상품 체크
-              const procPage = await browserService.createPage();
-              await procPage.goto(goods[0].goodsurl);
-              const spans = await procPage.$$('.text__title');
-              let isOversea = false;
-              for (const span of spans) {
-                const text = await procPage.evaluate((el) => el.textContent, span);
-                if (text === '해외배송 상품') {
-                  isOversea = true;
-                  break;
-                }
-              }
-              await procPage.close();
-
-              if (isOversea) {
-                result.result.error = false;
-                result.result.errorMsg = '수집성공';
-                result.result.list = goods;
-              } else {
-                result.result.error = true;
-                result.result.errorMsg = '국내사업자입니다.';
-                result.result.list = [];
-              }
-            }
-          } else if (item.URLPLATFORMS === 'NAVER') {
-            console.log('[CollectionService] NAVER 상품 처리 시작');
-            const data = await getNaverGoodsList(item.TARGETURL, page);
-
-            // 데이터 유효성 검사
-            if (!data) {
+            rawData = await getAuctionGoodsList(item.TARGETURL, page);
+            if (!rawData) {
               result.result.error = true;
               result.result.errorMsg = '데이터 로드 실패';
               result.result.list = [];
-            } else if (!data.categoryTree?.A || Object.keys(data.categoryTree?.A).length === 0) {
+            }
+          } else if (item.URLPLATFORMS === 'NAVER') {
+            console.log('[CollectionService] NAVER 상품 처리 시작');
+            rawData = await getNaverGoodsList(item.TARGETURL, page);
+            if (!rawData) {
               result.result.error = true;
-              result.result.errorMsg = '운영중이 아님';
+              result.result.errorMsg = '데이터 로드 실패';
               result.result.list = [];
-            } else {
-              // 베스트/신상품 필터링
-              const bestList = data.smartStoreV2?.specialProducts?.bestProductNos ?? [];
-              const newList = data.smartStoreV2?.specialProducts?.newProductNos ?? [];
-              const targetList = [...(result.bestyn === 'Y' ? bestList : []), ...(result.newyn === 'Y' ? newList : [])];
-
-              if (targetList.length === 0) {
-                result.result.error = true;
-                result.result.errorMsg = '베스트 상품이 없음';
-                result.result.list = [];
-              } else {
-                // 상품 데이터 수집 및 필터링
-                const combinedFound = await collectNaverProducts(data, targetList);
-
-                if (combinedFound.length === 0) {
-                  result.result.error = true;
-                  result.result.errorMsg = '수집된 상품 데이터 없음';
-                  result.result.list = [];
-                } else {
-                  const spricelimit: number = +item.SPRICELIMIT;
-                  const epricelimit: number = +item.EPRICELIMIT;
-
-                  const priceFiltered = combinedFound.filter(
-                    (item: any) => item.salePrice >= spricelimit && item.salePrice <= epricelimit,
-                  );
-
-                  const nameFiltered = priceFiltered.filter((item: any) => Boolean(item.name));
-
-                  if (nameFiltered.length === 0) {
-                    result.result.error = true;
-                    result.result.errorMsg = '가격/이름 필터링 후 상품 없음';
-                    result.result.list = [];
-                  } else {
-                    result.result.error = false;
-                    result.result.errorMsg = '수집성공';
-                    result.result.list = nameFiltered.map((item: any) => ({
-                      goodscode: item.id,
-                      goodsname: item.name,
-                      saleprice: item.salePrice,
-                      discountsaleprice: item.benefitsView?.discountedSalePrice || item.salePrice,
-                      discountrate: item.benefitsView?.discountedRatio || 0,
-                      deliveryfee: item.productDeliveryInfo?.baseFee ?? 0,
-                      nvcate: item.category?.categoryId || '',
-                      imageurl: item.representativeImageUrl || '',
-                      goodsurl: `https://smartstore.naver.com/${data.smartStoreV2?.channel?.url || 'unknown'}/products/${item.id}`,
-                      seoinfo: data.seoInfo?.sellerTags ?? '',
-                    }));
-                  }
-                }
-              }
             }
           } else {
             console.log('[CollectionService] 처리 제외 플랫폼:', item.URLPLATFORMS);
             continue;
           }
 
-          // 결과 데이터 API 전송
-          console.log('[CollectionService] 결과 데이터 전송:', result);
-          const resPost = await postGoodsList(
-            {
-              properties: {
+          // raw data → 서버에서 파싱 / 에러 시 isParsed: true
+          let postPayload: any;
+          if (rawData) {
+            postPayload = {
+              data: rawData,
+              context: {
+                isParsed: false,
+                inserturl: insertUrl,
                 urlnum: item.URLNUM,
                 usernum: usernum,
-                platforms: item.URLPLATFORMS,
                 spricelimit: item.SPRICELIMIT,
                 epricelimit: item.EPRICELIMIT,
-                inserturl: insertUrl,
-                jsonstring: result,
+                platforms: item.URLPLATFORMS,
+                bestyn: item.BESTYN,
+                newyn: item.NEWYN,
               },
-              params: { isParsed: true },
-            },
-            item.URLPLATFORMS,
-          );
+            };
+          } else {
+            postPayload = {
+              data: {
+                urlnum: item.URLNUM,
+                usernum: usernum,
+                spricelimit: item.SPRICELIMIT,
+                epricelimit: item.EPRICELIMIT,
+                platforms: item.URLPLATFORMS,
+                bestyn: item.BESTYN,
+                newyn: item.NEWYN,
+                result: result.result,
+              },
+              context: {
+                isParsed: true,
+                inserturl: insertUrl,
+              },
+            };
+          }
 
-          // 오늘 처리 횟수 초과 체크
+          console.log('[CollectionService] 결과 데이터 전송');
+          const resPost = await postGoodsList(postPayload, item.URLPLATFORMS);
+          postSucceeded = true;
+
           if (resPost.todayStop) {
             throw new Error('오늘 처리 횟수가 초과 되었습니다.');
           }
+
+          const urlcount = resPost.urlcount || 0;
+          this.addLog(
+            `결과 전송 완료 - ${item.TARGETSTORENAME} (${item.URLPLATFORMS}) ${urlcount}개 수집 (${this.progress.current}/${this.progress.total})`,
+          );
         } catch (error) {
           console.error('[CollectionService] 개별 상품 처리 오류:', error);
-          // 오류가 발생해도 다음 상품 처리 계속
+          const errorMessage = error instanceof Error ? error.message : String(error);
+
+          // 아직 서버에 전송하지 않은 경우 에러 결과 전송
+          if (!postSucceeded) {
+            try {
+              const errorPayload = {
+                data: {
+                  urlnum: item.URLNUM,
+                  usernum: usernum,
+                  spricelimit: item.SPRICELIMIT,
+                  epricelimit: item.EPRICELIMIT,
+                  platforms: item.URLPLATFORMS,
+                  bestyn: item.BESTYN,
+                  newyn: item.NEWYN,
+                  result: { error: true, errorMsg: errorMessage, list: [] },
+                },
+                context: {
+                  isParsed: true,
+                  inserturl: insertUrl,
+                },
+              };
+              await postGoodsList(errorPayload, item.URLPLATFORMS);
+            } catch (postError) {
+              console.error('[CollectionService] 에러 결과 전송 실패:', postError);
+            }
+          }
+
+          this.addLog(
+            `❗ 처리 실패 - ${item.TARGETSTORENAME} (${item.URLPLATFORMS}) (${this.progress.current}/${this.progress.total}) - ${errorMessage}`,
+          );
         }
 
         // 랜덤 지연 (15-20초)
@@ -565,111 +541,28 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 // 상품 수집 유틸리티 함수들
 // ========================================
 
-/**
- * 옥션 상품 목록 수집
- */
 const getAuctionGoodsList = async (url: string, page: any): Promise<any> => {
-  // 자연스러운 네비게이션: DOM에 링크 주입 후 마우스 클릭 시뮬레이션
-  await page.evaluate((targetUrl) => {
-    // 기존 네비게이션 링크가 있는지 확인
-    const existingLink = document.querySelector(`a[href="${targetUrl}"]`);
-    if (existingLink) {
-      return; // 이미 링크가 있으면 그대로 사용
+  try {
+    console.log(`[CollectionService] 옥션 상품 페이지 접근: ${url}`);
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+    const textContent = await page.evaluate(() => {
+      const element = document.getElementById('__NEXT_DATA__');
+      return element?.textContent ?? null;
+    });
+
+    if (!textContent) {
+      console.error('[CollectionService] __NEXT_DATA__ 데이터가 없습니다.');
+      return null;
     }
 
-    // 숨겨진 링크 생성 및 DOM에 추가
-    const link = document.createElement('a');
-    link.href = targetUrl;
-    link.style.position = 'absolute';
-    link.style.left = '-9999px';
-    link.style.opacity = '0';
-    link.style.pointerEvents = 'none';
-    link.setAttribute('data-natural-navigation', 'true');
-    document.body.appendChild(link);
-  }, url);
-
-  // 자연스러운 마우스 움직임 후 링크 클릭
-  await AntiDetectionUtils.simulateMouseMovement(page);
-  await AntiDetectionUtils.naturalDelay(500, 1000);
-
-  // 링크 클릭 (여러 방법 시도)
-  try {
-    await page.click(`a[href="${url}"]`);
+    const data = JSON.parse(textContent);
+    console.log('[CollectionService] 옥션 상품 데이터 로드 완료');
+    return data;
   } catch (error) {
-    // 대안: evaluate로 직접 클릭
-    await page.evaluate((targetUrl) => {
-      const link = document.querySelector(`a[href="${targetUrl}"]`) as HTMLAnchorElement;
-      if (link) {
-        link.click();
-      }
-    }, url);
+    console.error('[CollectionService] 옥션 상품 목록 수집 오류:', error);
+    return null;
   }
-
-  // 페이지 로딩 대기
-  await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 });
-
-  const textContent = await page.evaluate(() => {
-    const element = document.getElementById('__NEXT_DATA__');
-    return element?.textContent ?? null;
-  });
-
-  if (!textContent) {
-    throw new Error('textContent is undefined');
-  }
-
-  const data = JSON.parse(textContent);
-  const regions = data.props.pageProps.initialStates.curatorData.regions;
-
-  const list = regions.reduce((acc: any, curr: any) => {
-    const subList = curr.modules.reduce((acc: any, curr: any) => {
-      const subSubList = curr.rows.reduce((acc: any, curr: any) => {
-        if (curr.designName === 'ItemCardGeneral') {
-          if ((curr.viewModel.score?.payCount?.text ?? '0') === '0') {
-            return acc;
-          }
-
-          const salePrice = Number((curr.viewModel.price.binPrice ?? '0').replace(/,/g, ''));
-          const discountsaleprice = curr.viewModel.price.couponDiscountedBinPrice
-            ? Number((curr.viewModel.price.couponDiscountedBinPrice ?? '0').replace(/,/g, ''))
-            : salePrice;
-          const discountrate = curr.viewModel.price.discountRate
-            ? Number((curr.viewModel.price.discountRate ?? '0').replace(/,/g, ''))
-            : 0;
-
-          let deliveryfee = 0;
-          const tag = curr.viewModel.tags.find((tag: string) => tag.startsWith('배송비'));
-          if (tag) {
-            const match = tag.match(/(\d{1,3}(,\d{3})*)/);
-            if (match) {
-              deliveryfee = Number(match[0].replace(/,/g, ''));
-            }
-          }
-
-          return [
-            ...acc,
-            {
-              goodscode: curr.viewModel.itemNo,
-              goodsname: curr.viewModel.item.text,
-              imageurl: curr.viewModel.item.imageUrl,
-              goodsurl: curr.viewModel.item.link,
-              salePrice,
-              discountsaleprice,
-              discountrate,
-              deliveryfee,
-              seoinfo: '',
-              nvcate: '',
-            },
-          ];
-        }
-        return acc;
-      }, []);
-      return [...acc, ...subSubList];
-    }, []);
-    return [...acc, ...subList];
-  }, []);
-
-  const result = Array.from(list.reduce((map: any, item: any) => map.set(item.goodscode, item), new Map()).values());
-  return result;
 };
 
 /**
@@ -740,82 +633,23 @@ const getNaverGoodsList = async (url: string, page: any): Promise<any> => {
   }
 };
 
-/**
- * 네이버 상품 데이터 수집 및 조합
- */
-const collectNaverProducts = async (data: any, targetList: string[]): Promise<any[]> => {
-  try {
-    // 안전한 데이터 접근
-    const widgetContents = data?.widgetContents || {};
-    const category = data?.category || {};
-
-    const found1 =
-      widgetContents.bestProductWidget?.A?.data?.bestProducts?.REALTIME?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found2 =
-      widgetContents.bestProductWidget?.A?.data?.bestProducts?.DAILY?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found3 =
-      widgetContents.bestProductWidget?.A?.data?.bestProducts?.WEEKLY?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found4 =
-      widgetContents.bestProductWidget?.A?.data?.bestProducts?.MONTHLY?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found5 =
-      widgetContents?.bestProductWidget?.A?.data?.allCategoryProducts?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found6 =
-      widgetContents?.bestReviewWidget?.A?.data?.reviewProducts?.filter((item: any) => targetList.includes(item.id)) ??
-      [];
-
-    const found7 =
-      widgetContents?.wholeProductWidget?.A?.data?.simpleProducts?.filter((item: any) =>
-        targetList.includes(item.id),
-      ) ?? [];
-
-    const found8 = category?.A?.simpleProducts?.filter((item: any) => targetList.includes(item.id)) ?? [];
-
-    const combinedFound = [...found1, ...found2, ...found3, ...found4, ...found5, ...found6, ...found7, ...found8];
-
-    // 중복 제거 및 유효성 검사
-    const uniqueById = Array.from(
-      combinedFound
-        .filter((item: any) => item && item.id) // 유효한 아이템만 필터링
-        .reduce((map: any, item: any) => map.set(item.id, item), new Map())
-        .values(),
-    );
-
-    console.log(`[CollectionService] 상품 수집 결과: ${uniqueById.length}개 (대상: ${targetList.length}개)`);
-    return uniqueById;
-  } catch (error) {
-    console.error('[CollectionService] 상품 데이터 수집 오류:', error);
-    return [];
-  }
-};
-
-/**
- * 결과 데이터 API 전송
- */
 const postGoodsList = (data: any, platform: 'NAVER' | 'AUCTION'): Promise<any> => {
-  const url = `${process.env.URL_API ?? 'https://api.opennest.co.kr/api/v2'}/restful/ovse/relay-${platform.toLowerCase()}-goods`;
+  const url = `${process.env.URL_API ?? 'https://api.opennest.co.kr/selltkey/v1'}/product-collect/relay-${platform.toLowerCase()}-goods`;
+
+  const jsonBuffer = Buffer.from(JSON.stringify(data));
+  const compressed = gzipSync(jsonBuffer);
+
   return axios
     .request({
       method: 'POST',
       url,
       headers: {
         'Content-Type': 'application/json',
+        'Content-Encoding': 'gzip',
       },
-      data,
+      data: compressed,
+      transformRequest: [(d: any) => d],
+      maxBodyLength: Infinity,
     })
     .then((res) => res.data);
 };

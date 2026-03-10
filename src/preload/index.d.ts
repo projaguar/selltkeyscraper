@@ -35,6 +35,7 @@ interface KeywordData {
 }
 
 interface Api {
+  getAppVersion: () => Promise<string>;
   login: (userId: string, password: string) => Promise<LoginResponse>;
   getSavedCredentials: () => Promise<{
     email: string;
